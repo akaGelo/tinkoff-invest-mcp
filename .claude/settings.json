@@ -1,0 +1,50 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv:*)",
+      "Bash(pip:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(pytest:*)",
+      "Bash(pre-commit:*)",
+      "Bash(ruff:*)",
+      "Bash(mypy:*)",
+      "Bash(make:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(tree:*)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:docs.python.org)",
+      "WebFetch(domain:stackoverflow.com)",
+      "WebFetch(domain:readthedocs.io)",
+      "WebFetch(domain:docs.astral.sh)",
+      "mcp__perplexity-ask__perplexity_ask",
+      "ListMcpResourcesTool",
+      "ReadMcpResourceTool",
+      "WebSearch"
+    ],
+    "deny": [
+
+    ],
+    "ask": [
+      "Bash(docker:*)",
+      "Bash(npm:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff format ."
+          }
+        ]
+      }
+    ]
+  }
+}

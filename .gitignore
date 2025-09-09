@@ -171,3 +171,4 @@ cython_debug/
 .claude/settings.local.json
 .claude/cache/
 .claude/state/
+/.env.test

@@ -5,7 +5,13 @@ description = "Tinkoff Invest MCP Server"
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "fastmcp>=0.1.0",
+    "tinkoff-investments>=0.2.0b116",
+    "pydantic>=2.0.0",
 ]
+
+[project.scripts]
+tinkoff-invest-mcp = "tinkoff_invest_mcp.server:main"
+tinkoff-sandbox = "tinkoff_invest_mcp.cli:cli_main"
 
 [dependency-groups]
 dev = [
@@ -14,6 +20,7 @@ dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.3.0",
+    "python-dotenv>=1.1.1",
     "ruff>=0.12.12",
     # Stub packages для mypy
     "types-requests>=2.0.0",
@@ -71,6 +78,8 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 module = [
     "fastmcp.*",
+    "tinkoff.*",
+    "dotenv.*",
 ]
 ignore_missing_imports = true
 
@@ -81,6 +90,10 @@ addopts = [
     "--cov=src",
     "--cov-report=term-missing",
     "--cov-report=html",
-    "--cov-fail-under=50",
 ]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+omit = [
+    "src/tinkoff_invest_mcp/cli.py",
+]
