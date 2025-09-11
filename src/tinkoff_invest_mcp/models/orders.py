@@ -28,6 +28,19 @@ class Order(BaseModel):
     aci_value: Decimal | None = Field(
         None, description="НКД (накопленный купонный доход)"
     )
+    execution_report_status: str = Field(
+        ..., description="Текущий статус заявки (поручения)"
+    )
+    executed_order_price: Decimal | None = Field(
+        None, description="Исполненная цена заявки"
+    )
+    initial_commission: Decimal | None = Field(None, description="Начальная комиссия")
+    executed_commission: Decimal | None = Field(
+        None, description="Фактическая комиссия по итогам исполнения заявки"
+    )
+    order_request_id: str | None = Field(
+        None, description="Идентификатор ключа идемпотентности"
+    )
 
     @classmethod
     def from_tinkoff(cls, order: Any) -> "Order":
@@ -52,4 +65,17 @@ class Order(BaseModel):
             if order.initial_security_price
             else None,
             aci_value=money_to_decimal(getattr(order, "aci_value", None)),
+            execution_report_status=str(order.execution_report_status)
+            if hasattr(order, "execution_report_status")
+            else "UNKNOWN",
+            executed_order_price=money_to_decimal(order.executed_order_price)
+            if hasattr(order, "executed_order_price")
+            else None,
+            initial_commission=money_to_decimal(order.initial_commission)
+            if hasattr(order, "initial_commission")
+            else None,
+            executed_commission=money_to_decimal(order.executed_commission)
+            if hasattr(order, "executed_commission")
+            else None,
+            order_request_id=getattr(order, "order_request_id", None),
         )

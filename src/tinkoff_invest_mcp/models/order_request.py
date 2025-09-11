@@ -2,10 +2,13 @@
 
 from decimal import Decimal
 from enum import Enum
-from typing import ClassVar
+from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from tinkoff.invest.schemas import OrderDirection as TinkoffOrderDirection
+from tinkoff.invest.schemas import OrderType as TinkoffOrderType
+from tinkoff.invest.utils import decimal_to_quotation
 
 
 class OrderDirection(str, Enum):
@@ -38,7 +41,7 @@ class CreateOrderRequest(BaseModel):
 
     @field_validator("price")
     @classmethod
-    def validate_price(cls, v, info):
+    def validate_price(cls, v: Decimal | None, info: Any) -> Decimal | None:
         """Валидация цены в зависимости от типа ордера."""
         if not info.data:
             return v
@@ -56,6 +59,44 @@ class CreateOrderRequest(BaseModel):
 
         return v
 
-    class Config:
-        use_enum_values = True
-        json_encoders: ClassVar = {Decimal: str}
+    def to_tinkoff_request(self, account_id: str) -> dict[str, Any]:
+        """Преобразовать в параметры для Tinkoff API.
+
+        Args:
+            account_id: ID счета
+
+        Returns:
+            dict: Параметры для post_order
+        """
+        # Преобразуем направление
+        tinkoff_direction = (
+            TinkoffOrderDirection.ORDER_DIRECTION_BUY
+            if self.direction == OrderDirection.BUY
+            else TinkoffOrderDirection.ORDER_DIRECTION_SELL
+        )
+
+        # Преобразуем тип ордера
+        tinkoff_order_type = (
+            TinkoffOrderType.ORDER_TYPE_MARKET
+            if self.order_type == OrderType.MARKET
+            else TinkoffOrderType.ORDER_TYPE_LIMIT
+        )
+
+        # Базовые параметры
+        params = {
+            "figi": "",  # Будет пустым, используется instrument_id
+            "instrument_id": self.instrument_id,
+            "quantity": self.quantity,
+            "direction": tinkoff_direction,
+            "account_id": account_id,
+            "order_type": tinkoff_order_type,
+            "order_id": self.order_id,
+        }
+
+        # Для лимитных ордеров добавляем цену
+        if self.order_type == OrderType.LIMIT and self.price:
+            params["price"] = decimal_to_quotation(self.price)
+
+        return params
+
+    model_config = ConfigDict(use_enum_values=True)

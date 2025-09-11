@@ -1,8 +1,7 @@
 """Модель ответа при создании ордера."""
 
-from typing import ClassVar
-
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from tinkoff.invest.schemas import PostOrderResponse as TinkoffPostOrderResponse
 
 
 class OrderResponse(BaseModel):
@@ -13,5 +12,23 @@ class OrderResponse(BaseModel):
     message: str | None = None
     direction: str | None = None
 
-    class Config:
-        json_encoders: ClassVar = {str: str}
+    @classmethod
+    def from_tinkoff(cls, response: TinkoffPostOrderResponse) -> "OrderResponse":
+        """Создать из Tinkoff PostOrderResponse.
+
+        Args:
+            response: PostOrderResponse от Tinkoff API
+
+        Returns:
+            OrderResponse: Конвертированный ответ
+        """
+        return cls(
+            order_id=response.order_id,
+            execution_report_status=str(response.execution_report_status)
+            if response.execution_report_status
+            else None,
+            message=getattr(response, "message", None),
+            direction=getattr(response, "direction", None),
+        )
+
+    model_config = ConfigDict()

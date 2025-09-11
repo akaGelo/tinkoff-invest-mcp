@@ -7,6 +7,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from tinkoff.invest import AsyncClient, MoneyValue
+from tinkoff.invest.async_services import AsyncServices
 from tinkoff.invest.constants import INVEST_GRPC_API_SANDBOX
 
 
@@ -28,10 +29,10 @@ def get_env_var(name: str, required: bool = True) -> str | None:
 
 def money_value_to_float(money_value: MoneyValue) -> float:
     """Конвертировать MoneyValue в float."""
-    return money_value.units + money_value.nano / 1_000_000_000
+    return float(money_value.units) + float(money_value.nano) / 1_000_000_000
 
 
-async def list_accounts_with_balances(client: AsyncClient) -> None:
+async def list_accounts_with_balances(client: AsyncServices) -> None:
     """Показать список аккаунтов с балансами."""
     print("📋 Аккаунты и балансы:")
     try:
@@ -57,7 +58,7 @@ async def list_accounts_with_balances(client: AsyncClient) -> None:
         print(f"   ❌ Ошибка получения аккаунтов: {e}")
 
 
-async def create_sandbox_account(client: AsyncClient) -> str:
+async def create_sandbox_account(client: AsyncServices) -> str:
     """Создать новый sandbox аккаунт."""
     print("\n🏦 Создаю новый sandbox аккаунт...")
     response = await client.sandbox.open_sandbox_account()
@@ -71,7 +72,7 @@ async def create_sandbox_account(client: AsyncClient) -> str:
     )
     print("✅ Аккаунт пополнен на 100,000 RUB")
 
-    return account_id
+    return str(account_id)
 
 
 def print_account_info(account_id: str) -> None:
