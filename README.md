@@ -35,22 +35,6 @@ TINKOFF_MODE=sandbox
 TINKOFF_APP_NAME=tinkoff-invest-mcp
 ```
 
-## Управление Sandbox аккаунтами
-
-Для тестирования доступна CLI утилита для работы с sandbox аккаунтами:
-
-```bash
-# Просмотр существующих аккаунтов и балансов
-tinkoff-sandbox
-
-# Создание нового аккаунта с пополнением на 100,000 RUB
-tinkoff-sandbox --create
-```
-
-**Требования:** настроенный `.env.test` с `TINKOFF_TOKEN` для sandbox.
-
-**При разработке:** можно запускать через `uv run python -m src.tinkoff_invest_mcp.cli`
-
 ## Тестирование
 
 Для отладки можно использовать MCP Inspector:
