@@ -62,6 +62,8 @@ async def test_get_all_instrument_types(mcp_client):
         first_bond = bonds_data["instruments"][0]
         assert "uid" in first_bond, "get_bonds: отсутствует uid"
         assert first_bond["instrument_type"] == "bond"
+        # Проверяем что поле maturity_date присутствует (может быть None)
+        assert "maturity_date" in first_bond, "get_bonds: отсутствует maturity_date"
 
     # Тестируем ETFs с пагинацией
     result = await mcp_client.call_tool("get_etfs", {})

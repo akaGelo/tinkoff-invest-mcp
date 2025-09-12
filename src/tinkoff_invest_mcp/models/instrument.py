@@ -26,6 +26,10 @@ class Instrument(BaseModel):
     sell_available_flag: bool | None = Field(
         None, description="Признак доступности для продажи"
     )
+    maturity_date: str | None = Field(
+        None,
+        description="Дата погашения облигации в ISO формате (только для облигаций)",
+    )
 
     @classmethod
     def from_tinkoff_share(cls, share: Any) -> "Instrument":
@@ -45,6 +49,7 @@ class Instrument(BaseModel):
             else None,
             buy_available_flag=getattr(share, "buy_available_flag", None),
             sell_available_flag=getattr(share, "sell_available_flag", None),
+            maturity_date=None,
         )
 
     @classmethod
@@ -65,6 +70,9 @@ class Instrument(BaseModel):
             else None,
             buy_available_flag=getattr(bond, "buy_available_flag", None),
             sell_available_flag=getattr(bond, "sell_available_flag", None),
+            maturity_date=bond.maturity_date.isoformat()
+            if hasattr(bond, "maturity_date") and bond.maturity_date
+            else None,
         )
 
     @classmethod
@@ -85,6 +93,7 @@ class Instrument(BaseModel):
             else None,
             buy_available_flag=getattr(etf, "buy_available_flag", None),
             sell_available_flag=getattr(etf, "sell_available_flag", None),
+            maturity_date=None,
         )
 
     @classmethod
@@ -112,6 +121,9 @@ class Instrument(BaseModel):
             else None,
             buy_available_flag=getattr(instrument, "buy_available_flag", None),
             sell_available_flag=getattr(instrument, "sell_available_flag", None),
+            maturity_date=instrument.maturity_date.isoformat()
+            if hasattr(instrument, "maturity_date") and instrument.maturity_date
+            else None,
         )
 
     @classmethod
