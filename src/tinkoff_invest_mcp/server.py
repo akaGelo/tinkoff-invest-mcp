@@ -2,7 +2,8 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
-from typing import Any
+from datetime import datetime
+from decimal import Decimal
 
 import fastmcp.utilities.logging
 from fastmcp import FastMCP
@@ -14,6 +15,8 @@ from .cache import InstrumentsCache
 from .config import TinkoffConfig
 from .constants import DEFAULT_INSTRUMENTS_LIMIT, DEFAULT_PAGINATION_OFFSET
 from .models import (
+    CancelOrderResponse,
+    CancelStopOrderResponse,
     CandlesResponse,
     CashBalanceResponse,
     CreateOrderRequest,
@@ -26,11 +29,14 @@ from .models import (
     PaginatedInstrumentsResponse,
     PortfolioResponse,
     StopOrderRequest,
+    StopOrderResponse,
     StopOrdersResponse,
     TradingSchedulesResponse,
     TradingStatusResponse,
 )
-from .utils import CandleUtils, DateTimeUtils, OrderUtils
+from .models.common import money_to_decimal
+from .models.market_data import LastPrice
+from .utils import CandleUtils, DateTimeUtils
 
 
 class TinkoffMCPService:
@@ -262,11 +268,6 @@ class TinkoffMCPService:
         Returns:
             LastPricesResponse: Последние цены по запрошенным инструментам
         """
-        from decimal import Decimal
-
-        from .models.common import money_to_decimal
-        from .models.market_data import LastPrice
-
         with self._client_context() as client:
             response = client.market_data.get_last_prices(instrument_id=instrument_uids)
 
@@ -418,7 +419,7 @@ class TinkoffMCPService:
         quantity: int,
         direction: str,
         order_type: str,
-        price: str | None = None,
+        price: str | float | int | None = None,
     ) -> OrderResponse:
         """Создать торговую заявку.
 
@@ -431,13 +432,11 @@ class TinkoffMCPService:
             order_type: Тип заявки. Используйте:
                 - ORDER_TYPE_MARKET для рыночной заявки
                 - ORDER_TYPE_LIMIT для лимитной заявки
-            price: Цена в виде строки (только для ORDER_TYPE_LIMIT заявок), например "15.475"
+            price: Цена (только для ORDER_TYPE_LIMIT заявок). Принимает строку "15.475", число 15.475 или int 15
 
         Returns:
             OrderResponse: Информация о созданной заявке
         """
-        from decimal import Decimal
-
         # Создаем объект заявки из параметров
         order_request = CreateOrderRequest(
             instrument_id=instrument_id,
@@ -452,20 +451,22 @@ class TinkoffMCPService:
             response = client.orders.post_order(**tinkoff_request)
             return OrderResponse.from_tinkoff(response)
 
-    def cancel_order(self, order_id: str) -> dict[str, Any]:
+    def cancel_order(self, order_id: str) -> CancelOrderResponse:
         """Отменить торговую заявку.
 
         Args:
             order_id: ID заявки для отмены
 
         Returns:
-            dict: Результат отмены заявки
+            CancelOrderResponse: Результат отмены заявки
         """
         with self._client_context() as client:
             response = client.orders.cancel_order(
                 account_id=self.config.account_id, order_id=order_id
             )
-            return OrderUtils.create_order_response(True, response.time)
+            return CancelOrderResponse(
+                success=True, time=getattr(response, "time", None)
+            )
 
     # Stop orders methods
     def get_stop_orders(self) -> StopOrdersResponse:
@@ -489,11 +490,11 @@ class TinkoffMCPService:
         quantity: int,
         direction: str,
         stop_order_type: str,
-        stop_price: str,
+        stop_price: str | float | int,
         expiration_type: str,
-        price: str | None = None,
+        price: str | float | int | None = None,
         expire_date: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> StopOrderResponse:
         """Создать стоп-заявку.
 
         Создать стоп-заявку для автоматического управления рисками. Используйте:
@@ -509,17 +510,14 @@ class TinkoffMCPService:
             quantity: Количество лотов
             direction: Направление (STOP_ORDER_DIRECTION_BUY/SELL)
             stop_order_type: Тип стоп-заявки (STOP_ORDER_TYPE_TAKE_PROFIT/STOP_LOSS/STOP_LIMIT)
-            stop_price: Цена активации стоп-заявки в виде строки, например "280.5"
+            stop_price: Цена активации стоп-заявки. Принимает строку "280.5", число 280.5 или int 280
             expiration_type: Тип экспирации (GOOD_TILL_CANCEL/GOOD_TILL_DATE)
-            price: Цена исполнения в виде строки (только для STOP_ORDER_TYPE_STOP_LIMIT), например "275.0"
+            price: Цена исполнения (только для STOP_ORDER_TYPE_STOP_LIMIT). Принимает строку "275.0", число 275.0 или int 275
             expire_date: Дата экспирации в ISO формате (для GOOD_TILL_DATE)
 
         Returns:
-            dict: Информация о созданной стоп-заявке
+            StopOrderResponse: Информация о созданной стоп-заявке
         """
-        from datetime import datetime
-        from decimal import Decimal
-
         # Создаем объект стоп-заявки из параметров
         stop_order_request = StopOrderRequest(
             instrument_id=instrument_id,
@@ -537,26 +535,28 @@ class TinkoffMCPService:
                 self.config.account_id
             )
             response = client.stop_orders.post_stop_order(**tinkoff_request)
-            return {
-                "success": True,
-                "stop_order_id": response.stop_order_id,
-                "order_request_id": getattr(response, "order_request_id", None),
-            }
+            return StopOrderResponse(
+                success=True,
+                stop_order_id=response.stop_order_id,
+                order_request_id=getattr(response, "order_request_id", None),
+            )
 
-    def cancel_stop_order(self, stop_order_id: str) -> dict[str, Any]:
+    def cancel_stop_order(self, stop_order_id: str) -> CancelStopOrderResponse:
         """Отменить активную стоп-заявку по её ID.
 
         Args:
             stop_order_id: ID стоп-заявки для отмены
 
         Returns:
-            dict: Результат отмены стоп-заявки
+            CancelStopOrderResponse: Результат отмены стоп-заявки
         """
         with self._client_context() as client:
             response = client.stop_orders.cancel_stop_order(
                 account_id=self.config.account_id, stop_order_id=stop_order_id
             )
-            return {"success": True, "time": getattr(response, "time", None)}
+            return CancelStopOrderResponse(
+                success=True, time=getattr(response, "time", None)
+            )
 
     # Instruments methods
     def find_instrument(self, query: str) -> list[Instrument]:

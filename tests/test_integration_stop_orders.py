@@ -1,6 +1,7 @@
 """Интеграционные тесты для стоп-заявок."""
 
 import pytest
+from fastmcp.exceptions import ToolError
 
 from .conftest import parse_mcp_result
 
@@ -80,7 +81,7 @@ async def test_post_stop_order_validation_errors(mcp_client):
     """Тест валидации при создании стоп-заявок с неверными параметрами."""
 
     # Тест с отсутствующими обязательными параметрами
-    with pytest.raises((ValueError, TypeError, KeyError)):
+    with pytest.raises((ValueError, TypeError, KeyError, ToolError)):
         await mcp_client.call_tool(
             "post_stop_order",
             {
@@ -92,7 +93,7 @@ async def test_post_stop_order_validation_errors(mcp_client):
         )
 
     # Тест с неверным типом стоп-заявки
-    with pytest.raises((ValueError, TypeError)):
+    with pytest.raises((ValueError, TypeError, ToolError)):
         await mcp_client.call_tool(
             "post_stop_order",
             {
@@ -195,5 +196,5 @@ async def test_stop_order_models_structure(mcp_client):
     ]
 
     for test_case in test_cases:
-        with pytest.raises((ValueError, TypeError, KeyError)):
+        with pytest.raises((ValueError, TypeError, KeyError, ToolError)):
             await mcp_client.call_tool("post_stop_order", test_case)

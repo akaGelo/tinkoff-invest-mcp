@@ -1,6 +1,8 @@
-"""Модель ответа при создании ордера."""
+"""Модели ответов для операций с заявками."""
 
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict, Field
 from tinkoff.invest.schemas import PostOrderResponse as TinkoffPostOrderResponse
 
 
@@ -30,5 +32,33 @@ class OrderResponse(BaseModel):
             message=getattr(response, "message", None),
             direction=getattr(response, "direction", None),
         )
+
+    model_config = ConfigDict()
+
+
+class CancelOrderResponse(BaseModel):
+    """Ответ при отмене торговой заявки."""
+
+    success: bool = Field(..., description="Успешность операции")
+    time: datetime | None = Field(None, description="Время отмены заявки")
+
+    model_config = ConfigDict()
+
+
+class StopOrderResponse(BaseModel):
+    """Ответ при создании стоп-заявки."""
+
+    success: bool = Field(..., description="Успешность операции")
+    stop_order_id: str = Field(..., description="ID созданной стоп-заявки")
+    order_request_id: str | None = Field(None, description="ID запроса заявки")
+
+    model_config = ConfigDict()
+
+
+class CancelStopOrderResponse(BaseModel):
+    """Ответ при отмене стоп-заявки."""
+
+    success: bool = Field(..., description="Успешность операции")
+    time: datetime | None = Field(None, description="Время отмены стоп-заявки")
 
     model_config = ConfigDict()
