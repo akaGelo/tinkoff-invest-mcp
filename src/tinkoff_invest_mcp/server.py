@@ -93,12 +93,8 @@ class TinkoffMCPService:
         client = Client(
             self.config.token, target=self.config.target, app_name=self.config.app_name
         )
-        try:
-            with client as client_instance:
-                yield client_instance
-        finally:
-            # Клиент автоматически закроется в with
-            pass
+        with client as client_instance:
+            yield client_instance
 
     def _get_instrument_info(self, uid: str) -> tuple[str, str]:
         """Получить имя и тикер инструмента по UID.
