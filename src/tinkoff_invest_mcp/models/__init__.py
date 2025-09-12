@@ -20,6 +20,7 @@ from .portfolio import (
     PortfolioPosition,
     PortfolioResponse,
 )
+from .trading_schedule import TradingDay, TradingSchedule, TradingSchedulesResponse
 
 __all__ = [
     "Candle",
@@ -41,6 +42,9 @@ __all__ = [
     "PaginatedInstrumentsResponse",
     "PortfolioPosition",
     "PortfolioResponse",
+    "TradingDay",
+    "TradingSchedule",
+    "TradingSchedulesResponse",
     "TradingStatusResponse",
     "money_to_decimal",
 ]

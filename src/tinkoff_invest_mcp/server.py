@@ -25,6 +25,7 @@ from .models import (
     OrderResponse,
     PaginatedInstrumentsResponse,
     PortfolioResponse,
+    TradingSchedulesResponse,
     TradingStatusResponse,
 )
 from .utils import CandleUtils, DateTimeUtils, OrderUtils
@@ -146,6 +147,7 @@ class TinkoffMCPService:
         self.mcp.tool()(self.get_candles)
         self.mcp.tool()(self.get_order_book)
         self.mcp.tool()(self.get_trading_status)
+        self.mcp.tool()(self.get_trading_schedules)
 
         # Orders tools
         self.mcp.tool()(self.get_orders)
@@ -362,6 +364,35 @@ class TinkoffMCPService:
             trading_status.instrument_ticker = ticker
 
             return trading_status
+
+    def get_trading_schedules(
+        self,
+        exchange: str | None = None,
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> TradingSchedulesResponse:
+        """Получить расписание торгов.
+
+        Args:
+            exchange: Код биржи (MOEX, SPB). Если None - все биржи
+            from_date: Начало периода в ISO формате
+            to_date: Конец периода в ISO формате
+
+        Returns:
+            TradingSchedulesResponse: Расписание торгов на указанный период
+        """
+        with self._client_context() as client:
+            # Преобразуем строки в datetime если нужно
+            from_dt = DateTimeUtils.parse_iso_datetime(from_date) if from_date else None
+            to_dt = DateTimeUtils.parse_iso_datetime(to_date) if to_date else None
+
+            response = client.instruments.trading_schedules(
+                exchange=exchange or "",
+                from_=from_dt,
+                to=to_dt,
+            )
+
+            return TradingSchedulesResponse.from_tinkoff(response)
 
     # Orders methods
     def get_orders(self) -> list[Order]:
