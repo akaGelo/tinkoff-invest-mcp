@@ -418,7 +418,7 @@ class TinkoffMCPService:
         quantity: int,
         direction: str,
         order_type: str,
-        price: float | None = None,
+        price: str | None = None,
     ) -> OrderResponse:
         """Создать торговую заявку.
 
@@ -431,7 +431,7 @@ class TinkoffMCPService:
             order_type: Тип заявки. Используйте:
                 - ORDER_TYPE_MARKET для рыночной заявки
                 - ORDER_TYPE_LIMIT для лимитной заявки
-            price: Цена (только для ORDER_TYPE_LIMIT заявок)
+            price: Цена в виде строки (только для ORDER_TYPE_LIMIT заявок), например "15.475"
 
         Returns:
             OrderResponse: Информация о созданной заявке
@@ -489,9 +489,9 @@ class TinkoffMCPService:
         quantity: int,
         direction: str,
         stop_order_type: str,
-        stop_price: float,
+        stop_price: str,
         expiration_type: str,
-        price: float | None = None,
+        price: str | None = None,
         expire_date: str | None = None,
     ) -> dict[str, Any]:
         """Создать стоп-заявку.
@@ -509,9 +509,9 @@ class TinkoffMCPService:
             quantity: Количество лотов
             direction: Направление (STOP_ORDER_DIRECTION_BUY/SELL)
             stop_order_type: Тип стоп-заявки (STOP_ORDER_TYPE_TAKE_PROFIT/STOP_LOSS/STOP_LIMIT)
-            stop_price: Цена активации стоп-заявки
+            stop_price: Цена активации стоп-заявки в виде строки, например "280.5"
             expiration_type: Тип экспирации (GOOD_TILL_CANCEL/GOOD_TILL_DATE)
-            price: Цена исполнения (только для STOP_ORDER_TYPE_STOP_LIMIT)
+            price: Цена исполнения в виде строки (только для STOP_ORDER_TYPE_STOP_LIMIT), например "275.0"
             expire_date: Дата экспирации в ISO формате (для GOOD_TILL_DATE)
 
         Returns:
