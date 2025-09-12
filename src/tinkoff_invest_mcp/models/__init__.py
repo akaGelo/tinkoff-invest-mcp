@@ -20,6 +20,14 @@ from .portfolio import (
     PortfolioPosition,
     PortfolioResponse,
 )
+from .stop_orders import (
+    StopOrder,
+    StopOrderDirection,
+    StopOrderExpirationType,
+    StopOrderRequest,
+    StopOrdersResponse,
+    StopOrderType,
+)
 from .trading_schedule import TradingDay, TradingSchedule, TradingSchedulesResponse
 
 __all__ = [
@@ -42,6 +50,12 @@ __all__ = [
     "PaginatedInstrumentsResponse",
     "PortfolioPosition",
     "PortfolioResponse",
+    "StopOrder",
+    "StopOrderDirection",
+    "StopOrderExpirationType",
+    "StopOrderRequest",
+    "StopOrderType",
+    "StopOrdersResponse",
     "TradingDay",
     "TradingSchedule",
     "TradingSchedulesResponse",

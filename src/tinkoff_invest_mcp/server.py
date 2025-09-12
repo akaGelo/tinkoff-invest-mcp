@@ -25,6 +25,8 @@ from .models import (
     OrderResponse,
     PaginatedInstrumentsResponse,
     PortfolioResponse,
+    StopOrderRequest,
+    StopOrdersResponse,
     TradingSchedulesResponse,
     TradingStatusResponse,
 )
@@ -153,6 +155,11 @@ class TinkoffMCPService:
         self.mcp.tool()(self.get_orders)
         self.mcp.tool()(self.create_order)
         self.mcp.tool()(self.cancel_order)
+
+        # Stop orders tools
+        self.mcp.tool()(self.get_stop_orders)
+        self.mcp.tool()(self.post_stop_order)
+        self.mcp.tool()(self.cancel_stop_order)
 
         # Instruments tools
         self.mcp.tool()(self.find_instrument)
@@ -459,6 +466,97 @@ class TinkoffMCPService:
                 account_id=self.config.account_id, order_id=order_id
             )
             return OrderUtils.create_order_response(True, response.time)
+
+    # Stop orders methods
+    def get_stop_orders(self) -> StopOrdersResponse:
+        """Получить список активных стоп-заявок по счету.
+
+        Используйте для получения списка активных стоп-заявок (stop-loss, take-profit, stop-limit).
+        Стоп-заявки обрабатываются отдельно от обычных заявок.
+
+        Returns:
+            StopOrdersResponse: Список активных стоп-заявок
+        """
+        with self._client_context() as client:
+            response = client.stop_orders.get_stop_orders(
+                account_id=self.config.account_id
+            )
+            return StopOrdersResponse.from_tinkoff(response)
+
+    def post_stop_order(
+        self,
+        instrument_id: str,
+        quantity: int,
+        direction: str,
+        stop_order_type: str,
+        stop_price: float,
+        expiration_type: str,
+        price: float | None = None,
+        expire_date: str | None = None,
+    ) -> dict[str, Any]:
+        """Создать стоп-заявку.
+
+        Создать стоп-заявку для автоматического управления рисками. Используйте:
+        - stop_order_type: STOP_ORDER_TYPE_TAKE_PROFIT для тейк-профита
+        - stop_order_type: STOP_ORDER_TYPE_STOP_LOSS для стоп-лосса
+        - stop_order_type: STOP_ORDER_TYPE_STOP_LIMIT для стоп-лимита
+        - direction: STOP_ORDER_DIRECTION_BUY для покупки, STOP_ORDER_DIRECTION_SELL для продажи
+        - expiration_type: STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL до отмены
+        - expiration_type: STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_DATE до указанной даты
+
+        Args:
+            instrument_id: ID инструмента (UID)
+            quantity: Количество лотов
+            direction: Направление (STOP_ORDER_DIRECTION_BUY/SELL)
+            stop_order_type: Тип стоп-заявки (STOP_ORDER_TYPE_TAKE_PROFIT/STOP_LOSS/STOP_LIMIT)
+            stop_price: Цена активации стоп-заявки
+            expiration_type: Тип экспирации (GOOD_TILL_CANCEL/GOOD_TILL_DATE)
+            price: Цена исполнения (только для STOP_ORDER_TYPE_STOP_LIMIT)
+            expire_date: Дата экспирации в ISO формате (для GOOD_TILL_DATE)
+
+        Returns:
+            dict: Информация о созданной стоп-заявке
+        """
+        from datetime import datetime
+        from decimal import Decimal
+
+        # Создаем объект стоп-заявки из параметров
+        stop_order_request = StopOrderRequest(
+            instrument_id=instrument_id,
+            quantity=quantity,
+            direction=direction,  # type: ignore[arg-type]
+            stop_order_type=stop_order_type,  # type: ignore[arg-type]
+            stop_price=Decimal(str(stop_price)),
+            expiration_type=expiration_type,  # type: ignore[arg-type]
+            price=Decimal(str(price)) if price is not None else None,
+            expire_date=datetime.fromisoformat(expire_date) if expire_date else None,
+        )
+
+        with self._client_context() as client:
+            tinkoff_request = stop_order_request.to_tinkoff_request(
+                self.config.account_id
+            )
+            response = client.stop_orders.post_stop_order(**tinkoff_request)
+            return {
+                "success": True,
+                "stop_order_id": response.stop_order_id,
+                "order_request_id": getattr(response, "order_request_id", None),
+            }
+
+    def cancel_stop_order(self, stop_order_id: str) -> dict[str, Any]:
+        """Отменить активную стоп-заявку по её ID.
+
+        Args:
+            stop_order_id: ID стоп-заявки для отмены
+
+        Returns:
+            dict: Результат отмены стоп-заявки
+        """
+        with self._client_context() as client:
+            response = client.stop_orders.cancel_stop_order(
+                account_id=self.config.account_id, stop_order_id=stop_order_id
+            )
+            return {"success": True, "time": getattr(response, "time", None)}
 
     # Instruments methods
     def find_instrument(self, query: str) -> list[Instrument]:
