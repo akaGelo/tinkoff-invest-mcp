@@ -339,9 +339,13 @@ class TinkoffMCPService:
         Args:
             instrument_id: ID инструмента (UID)
             quantity: Количество лотов
-            direction: Направление (BUY/SELL)
-            order_type: Тип заявки (MARKET/LIMIT)
-            price: Цена (только для LIMIT заявок)
+            direction: Направление заявки. Используйте:
+                - ORDER_DIRECTION_BUY для покупки
+                - ORDER_DIRECTION_SELL для продажи
+            order_type: Тип заявки. Используйте:
+                - ORDER_TYPE_MARKET для рыночной заявки
+                - ORDER_TYPE_LIMIT для лимитной заявки
+            price: Цена (только для ORDER_TYPE_LIMIT заявок)
 
         Returns:
             OrderResponse: Информация о созданной заявке
