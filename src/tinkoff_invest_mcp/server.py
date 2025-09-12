@@ -304,7 +304,7 @@ class TinkoffMCPService:
             to_dt = DateTimeUtils.parse_iso_datetime(to_date)
 
             response = client.market_data.get_candles(
-                figi=instrument_uid,
+                instrument_id=instrument_uid,
                 interval=candle_interval,
                 from_=from_dt,
                 to=to_dt,
@@ -330,7 +330,7 @@ class TinkoffMCPService:
         """
         with self._client_context() as client:
             response = client.market_data.get_order_book(
-                figi=instrument_uid, depth=depth
+                instrument_id=instrument_uid, depth=depth
             )
 
             # Обогащаем данными об инструменте
@@ -351,7 +351,9 @@ class TinkoffMCPService:
             TradingStatusResponse: Информация о возможности торговли инструментом
         """
         with self._client_context() as client:
-            response = client.market_data.get_trading_status(figi=instrument_uid)
+            response = client.market_data.get_trading_status(
+                instrument_id=instrument_uid
+            )
 
             # Обогащаем данными об инструменте
             trading_status = TradingStatusResponse.from_tinkoff(response)
