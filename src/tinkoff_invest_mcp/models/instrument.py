@@ -1,8 +1,11 @@
 """Модели для финансовых инструментов."""
 
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, Field
+
+from .common import money_to_decimal
 
 
 class Instrument(BaseModel):
@@ -30,6 +33,18 @@ class Instrument(BaseModel):
         None,
         description="Дата погашения облигации в ISO формате (только для облигаций)",
     )
+    aci_value: Decimal | None = Field(
+        None,
+        description="НКД (накопленный купонный доход) на дату (только для облигаций)",
+    )
+    coupon_quantity_per_year: int | None = Field(
+        None,
+        description="Количество купонов в год (только для облигаций)",
+    )
+    floating_coupon_flag: bool | None = Field(
+        None,
+        description="Признак плавающего купона (только для облигаций)",
+    )
 
     @classmethod
     def from_tinkoff_share(cls, share: Any) -> "Instrument":
@@ -50,6 +65,9 @@ class Instrument(BaseModel):
             buy_available_flag=getattr(share, "buy_available_flag", None),
             sell_available_flag=getattr(share, "sell_available_flag", None),
             maturity_date=None,
+            aci_value=None,
+            coupon_quantity_per_year=None,
+            floating_coupon_flag=None,
         )
 
     @classmethod
@@ -73,6 +91,9 @@ class Instrument(BaseModel):
             maturity_date=bond.maturity_date.isoformat()
             if hasattr(bond, "maturity_date") and bond.maturity_date
             else None,
+            aci_value=money_to_decimal(getattr(bond, "aci_value", None)),
+            coupon_quantity_per_year=getattr(bond, "coupon_quantity_per_year", None),
+            floating_coupon_flag=getattr(bond, "floating_coupon_flag", None),
         )
 
     @classmethod
@@ -94,6 +115,9 @@ class Instrument(BaseModel):
             buy_available_flag=getattr(etf, "buy_available_flag", None),
             sell_available_flag=getattr(etf, "sell_available_flag", None),
             maturity_date=None,
+            aci_value=None,
+            coupon_quantity_per_year=None,
+            floating_coupon_flag=None,
         )
 
     @classmethod
@@ -124,6 +148,11 @@ class Instrument(BaseModel):
             maturity_date=instrument.maturity_date.isoformat()
             if hasattr(instrument, "maturity_date") and instrument.maturity_date
             else None,
+            aci_value=money_to_decimal(getattr(instrument, "aci_value", None)),
+            coupon_quantity_per_year=getattr(
+                instrument, "coupon_quantity_per_year", None
+            ),
+            floating_coupon_flag=getattr(instrument, "floating_coupon_flag", None),
         )
 
     @classmethod

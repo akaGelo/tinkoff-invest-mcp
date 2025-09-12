@@ -64,6 +64,14 @@ async def test_get_all_instrument_types(mcp_client):
         assert first_bond["instrument_type"] == "bond"
         # Проверяем что поле maturity_date присутствует (может быть None)
         assert "maturity_date" in first_bond, "get_bonds: отсутствует maturity_date"
+        # Проверяем что поля НКД и купонов присутствуют (могут быть None)
+        assert "aci_value" in first_bond, "get_bonds: отсутствует aci_value"
+        assert "coupon_quantity_per_year" in first_bond, (
+            "get_bonds: отсутствует coupon_quantity_per_year"
+        )
+        assert "floating_coupon_flag" in first_bond, (
+            "get_bonds: отсутствует floating_coupon_flag"
+        )
 
     # Тестируем ETFs с пагинацией
     result = await mcp_client.call_tool("get_etfs", {})
