@@ -136,3 +136,41 @@ class Instrument(BaseModel):
         else:
             # Fallback к общему методу
             return cls.from_tinkoff_find_result(instrument)
+
+
+class PaginatedInstrumentsResponse(BaseModel):
+    """Пагинированный ответ для списка инструментов."""
+
+    instruments: list[Instrument] = Field(..., description="Список инструментов")
+    total: int = Field(..., description="Общее количество инструментов")
+    limit: int = Field(..., description="Лимит записей на странице")
+    offset: int = Field(..., description="Смещение от начала")
+    has_more: bool = Field(..., description="Есть ли еще данные")
+
+    @classmethod
+    def create(
+        cls,
+        instruments: list[Instrument],
+        total: int,
+        limit: int,
+        offset: int,
+    ) -> "PaginatedInstrumentsResponse":
+        """Создать пагинированный ответ.
+
+        Args:
+            instruments: Список инструментов для текущей страницы
+            total: Общее количество инструментов
+            limit: Лимит записей на странице
+            offset: Смещение от начала
+
+        Returns:
+            PaginatedInstrumentsResponse: Пагинированный ответ
+        """
+        has_more = offset + limit < total
+        return cls(
+            instruments=instruments,
+            total=total,
+            limit=limit,
+            offset=offset,
+            has_more=has_more,
+        )

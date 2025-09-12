@@ -1,7 +1,7 @@
 """Pydantic модели для Tinkoff Invest MCP Server."""
 
 from .common import MoneyAmount, money_to_decimal
-from .instrument import Instrument
+from .instrument import Instrument, PaginatedInstrumentsResponse
 from .market_data import (
     Candle,
     CandlesResponse,
@@ -38,6 +38,7 @@ __all__ = [
     "OrderDirection",
     "OrderResponse",
     "OrderType",
+    "PaginatedInstrumentsResponse",
     "PortfolioPosition",
     "PortfolioResponse",
     "TradingStatusResponse",

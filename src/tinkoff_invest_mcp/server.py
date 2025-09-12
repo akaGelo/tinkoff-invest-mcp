@@ -23,6 +23,7 @@ from .models import (
     Order,
     OrderBookResponse,
     OrderResponse,
+    PaginatedInstrumentsResponse,
     PortfolioResponse,
     TradingStatusResponse,
 )
@@ -46,6 +47,11 @@ class TinkoffMCPService:
         self.mode: str = "sandbox"
         self.app_name: str = "tinkoff-invest-mcp"
         self.target: str | None = None
+
+        # Кэш для инструментов
+        self._bonds_cache: list[Instrument] | None = None
+        self._shares_cache: list[Instrument] | None = None
+        self._etfs_cache: list[Instrument] | None = None
 
     def initialize(self) -> None:
         """Инициализация клиента и регистрация tools."""
@@ -407,37 +413,123 @@ class TinkoffMCPService:
             )
             return Instrument.from_tinkoff(response.instrument)
 
-    def get_shares(self) -> list[Instrument]:
-        """Получить список всех акций.
+    def get_shares(
+        self, limit: int = 100000, offset: int = 0
+    ) -> PaginatedInstrumentsResponse:
+        """Получить список акций с пагинацией.
+
+        Args:
+            limit: Максимальное количество акций для возврата (по умолчанию 100000)
+            offset: Смещение для пагинации (по умолчанию 0)
 
         Returns:
-            list[Instrument]: Список акций
+            PaginatedInstrumentsResponse: Пагинированный список акций
         """
-        with self._client_context() as client:
-            response = client.instruments.shares()
-            return [
-                Instrument.from_tinkoff_share(share) for share in response.instruments
-            ]
+        # Проверяем кэш
+        if self._shares_cache is None:
+            with self._client_context() as client:
+                response = client.instruments.shares()
+                self._shares_cache = [
+                    Instrument.from_tinkoff_share(share)
+                    for share in response.instruments
+                ]
+                self.logger.info(f"Loaded {len(self._shares_cache)} shares into cache")
 
-    def get_bonds(self) -> list[Instrument]:
-        """Получить список всех облигаций.
+        # Применяем пагинацию
+        total = len(self._shares_cache)
+        start_idx = offset
+        end_idx = offset + limit
+
+        # Проверяем границы
+        if start_idx >= total:
+            paginated_shares = []
+        else:
+            paginated_shares = self._shares_cache[start_idx:end_idx]
+
+        return PaginatedInstrumentsResponse.create(
+            instruments=paginated_shares,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+
+    def get_bonds(
+        self, limit: int = 100000, offset: int = 0
+    ) -> PaginatedInstrumentsResponse:
+        """Получить список облигаций с пагинацией.
+
+        Args:
+            limit: Максимальное количество облигаций для возврата (по умолчанию 100000)
+            offset: Смещение для пагинации (по умолчанию 0)
 
         Returns:
-            list[Instrument]: Список облигаций
+            PaginatedInstrumentsResponse: Пагинированный список облигаций
         """
-        with self._client_context() as client:
-            response = client.instruments.bonds()
-            return [Instrument.from_tinkoff_bond(bond) for bond in response.instruments]
+        # Проверяем кэш
+        if self._bonds_cache is None:
+            with self._client_context() as client:
+                response = client.instruments.bonds()
+                self._bonds_cache = [
+                    Instrument.from_tinkoff_bond(bond) for bond in response.instruments
+                ]
+                self.logger.info(f"Loaded {len(self._bonds_cache)} bonds into cache")
 
-    def get_etfs(self) -> list[Instrument]:
-        """Получить список всех ETF.
+        # Применяем пагинацию
+        total = len(self._bonds_cache)
+        start_idx = offset
+        end_idx = offset + limit
+
+        # Проверяем границы
+        if start_idx >= total:
+            paginated_bonds = []
+        else:
+            paginated_bonds = self._bonds_cache[start_idx:end_idx]
+
+        return PaginatedInstrumentsResponse.create(
+            instruments=paginated_bonds,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
+
+    def get_etfs(
+        self, limit: int = 100000, offset: int = 0
+    ) -> PaginatedInstrumentsResponse:
+        """Получить список ETF с пагинацией.
+
+        Args:
+            limit: Максимальное количество ETF для возврата (по умолчанию 100000)
+            offset: Смещение для пагинации (по умолчанию 0)
 
         Returns:
-            list[Instrument]: Список ETF
+            PaginatedInstrumentsResponse: Пагинированный список ETF
         """
-        with self._client_context() as client:
-            response = client.instruments.etfs()
-            return [Instrument.from_tinkoff_etf(etf) for etf in response.instruments]
+        # Проверяем кэш
+        if self._etfs_cache is None:
+            with self._client_context() as client:
+                response = client.instruments.etfs()
+                self._etfs_cache = [
+                    Instrument.from_tinkoff_etf(etf) for etf in response.instruments
+                ]
+                self.logger.info(f"Loaded {len(self._etfs_cache)} ETFs into cache")
+
+        # Применяем пагинацию
+        total = len(self._etfs_cache)
+        start_idx = offset
+        end_idx = offset + limit
+
+        # Проверяем границы
+        if start_idx >= total:
+            paginated_etfs = []
+        else:
+            paginated_etfs = self._etfs_cache[start_idx:end_idx]
+
+        return PaginatedInstrumentsResponse.create(
+            instruments=paginated_etfs,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
 
 def create_server() -> FastMCP:

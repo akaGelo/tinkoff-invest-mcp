@@ -7,15 +7,24 @@ from .conftest import parse_mcp_result
 
 @pytest.mark.asyncio
 async def test_get_shares(mcp_client):
-    """Тест получения списка акций."""
+    """Тест получения списка акций с пагинацией."""
     result = await mcp_client.call_tool("get_shares", {})
     shares_data = parse_mcp_result(result)
 
-    assert isinstance(shares_data, list)
-    assert len(shares_data) > 0
+    assert isinstance(shares_data, dict), (
+        "get_shares должен возвращать dict с пагинацией"
+    )
+    assert "instruments" in shares_data
+    assert "total" in shares_data
+    assert "limit" in shares_data
+    assert "offset" in shares_data
+    assert "has_more" in shares_data
+
+    assert isinstance(shares_data["instruments"], list)
+    assert len(shares_data["instruments"]) > 0
 
     # Проверяем структуру первой акции
-    share = shares_data[0]
+    share = shares_data["instruments"][0]
     expected_fields = [
         "uid",
         "name",
@@ -33,22 +42,44 @@ async def test_get_shares(mcp_client):
 @pytest.mark.asyncio
 async def test_get_all_instrument_types(mcp_client):
     """Тест получения всех типов инструментов."""
-    # Тестируем что все методы работают
-    instruments_methods = [
-        ("get_bonds", "bond"),
-        ("get_etfs", "etf"),
-    ]
+    # Тестируем bonds с пагинацией
+    result = await mcp_client.call_tool("get_bonds", {})
+    bonds_data = parse_mcp_result(result)
 
-    for method_name, expected_type in instruments_methods:
-        result = await mcp_client.call_tool(method_name, {})
-        data = parse_mcp_result(result)
+    assert isinstance(bonds_data, dict), "get_bonds должен возвращать dict с пагинацией"
+    assert "instruments" in bonds_data
+    assert "total" in bonds_data
+    assert "limit" in bonds_data
+    assert "offset" in bonds_data
+    assert "has_more" in bonds_data
 
-        assert isinstance(data, list), f"{method_name} должен возвращать список"
+    assert isinstance(bonds_data["instruments"], list)
+    assert bonds_data["total"] > 0
+    assert bonds_data["limit"] == 100000  # default limit
+    assert bonds_data["offset"] == 0  # default offset
 
-        if data:  # Проверяем только если есть данные
-            first_item = data[0]
-            assert "uid" in first_item, f"{method_name}: отсутствует uid"
-            assert first_item["instrument_type"] == expected_type
+    if bonds_data["instruments"]:
+        first_bond = bonds_data["instruments"][0]
+        assert "uid" in first_bond, "get_bonds: отсутствует uid"
+        assert first_bond["instrument_type"] == "bond"
+
+    # Тестируем ETFs с пагинацией
+    result = await mcp_client.call_tool("get_etfs", {})
+    etfs_data = parse_mcp_result(result)
+
+    assert isinstance(etfs_data, dict), "get_etfs должен возвращать dict с пагинацией"
+    assert "instruments" in etfs_data
+    assert "total" in etfs_data
+    assert "limit" in etfs_data
+    assert "offset" in etfs_data
+    assert "has_more" in etfs_data
+
+    assert isinstance(etfs_data["instruments"], list)
+
+    if etfs_data["instruments"]:  # Проверяем только если есть данные
+        first_item = etfs_data["instruments"][0]
+        assert "uid" in first_item, "get_etfs: отсутствует uid"
+        assert first_item["instrument_type"] == "etf"
 
 
 @pytest.mark.asyncio
@@ -83,6 +114,39 @@ async def test_get_trading_status(mcp_client, test_instrument):
         assert "not found" in error_msg.lower() or "50002" in error_msg
         print(f"Instrument not found in sandbox (expected): {error_msg[:100]}")
         # Тест считается пройденным, так как API работает корректно
+
+
+@pytest.mark.asyncio
+async def test_get_bonds_pagination(mcp_client):
+    """Тест пагинации для bonds."""
+    # Запрашиваем первые 10 облигаций
+    result = await mcp_client.call_tool("get_bonds", {"limit": 10, "offset": 0})
+    page1_data = parse_mcp_result(result)
+
+    assert isinstance(page1_data, dict)
+    assert len(page1_data["instruments"]) <= 10
+    assert page1_data["limit"] == 10
+    assert page1_data["offset"] == 0
+
+    if page1_data["has_more"]:
+        # Запрашиваем следующие 10 облигаций
+        result2 = await mcp_client.call_tool("get_bonds", {"limit": 10, "offset": 10})
+        page2_data = parse_mcp_result(result2)
+
+        assert isinstance(page2_data, dict)
+        assert len(page2_data["instruments"]) <= 10
+        assert page2_data["limit"] == 10
+        assert page2_data["offset"] == 10
+        assert (
+            page2_data["total"] == page1_data["total"]
+        )  # Total должно быть одинаковое
+
+        # Проверяем что инструменты разные
+        page1_uids = {bond["uid"] for bond in page1_data["instruments"]}
+        page2_uids = {bond["uid"] for bond in page2_data["instruments"]}
+        assert page1_uids.isdisjoint(page2_uids), (
+            "Страницы должны содержать разные инструменты"
+        )
 
 
 @pytest.mark.asyncio
