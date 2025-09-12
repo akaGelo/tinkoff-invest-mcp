@@ -1,18 +1,18 @@
 """Tinkoff Invest MCP Server implementation."""
 
-import os
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
-from datetime import datetime
 from typing import Any
 
 import fastmcp.utilities.logging
 from fastmcp import FastMCP
 from tinkoff.invest import Client
-from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
-from tinkoff.invest.schemas import CandleInterval, InstrumentIdType
+from tinkoff.invest.schemas import InstrumentIdType
 from tinkoff.invest.services import Services
 
+from .cache import InstrumentsCache
+from .config import TinkoffConfig
+from .constants import DEFAULT_INSTRUMENTS_LIMIT, DEFAULT_PAGINATION_OFFSET
 from .models import (
     CandlesResponse,
     CashBalanceResponse,
@@ -27,31 +27,32 @@ from .models import (
     PortfolioResponse,
     TradingStatusResponse,
 )
+from .utils import CandleUtils, DateTimeUtils, OrderUtils
 
 
 class TinkoffMCPService:
     """Централизованный MCP сервис для Tinkoff Invest API."""
 
-    def __init__(self) -> None:
-        """Инициализация сервиса."""
+    def __init__(self, config: TinkoffConfig | None = None) -> None:
+        """Инициализация сервиса.
+
+        Args:
+            config: Конфигурация для сервиса. Если None, загружается из env
+        """
         self.logger = fastmcp.utilities.logging.get_logger("tinkoff-invest-mcp")
         self.logger.info("🚀 Initializing Tinkoff Invest MCP Service...")
 
+        # Загружаем конфигурацию
+        self.config = config or TinkoffConfig.from_env()
+
+        # Логируем конфигурацию без чувствительных данных
+        self.logger.info(f"📊 Configuration: {self.config.mask_sensitive_data()}")
+
         self.mcp = FastMCP("Tinkoff Invest MCP Server")
-        self.client = None
         self._initialized = False
 
-        # Инициализируем атрибуты с типами
-        self.token: str | None = None
-        self.account_id: str | None = None
-        self.mode: str = "sandbox"
-        self.app_name: str = "tinkoff-invest-mcp"
-        self.target: str | None = None
-
-        # Кэш для инструментов
-        self._bonds_cache: list[Instrument] | None = None
-        self._shares_cache: list[Instrument] | None = None
-        self._etfs_cache: list[Instrument] | None = None
+        # Инициализируем кэш инструментов
+        self._cache = InstrumentsCache(self._client_context)
 
     def initialize(self) -> None:
         """Инициализация клиента и регистрация tools."""
@@ -60,28 +61,7 @@ class TinkoffMCPService:
 
         self.logger.info("🔧 Setting up Tinkoff client...")
 
-        # Загружаем конфигурацию из environment
-        self.token = os.environ.get("TINKOFF_TOKEN")
-        if not self.token:
-            raise ValueError("Required environment variable 'TINKOFF_TOKEN' not set")
-
-        self.account_id = os.environ.get("TINKOFF_ACCOUNT_ID")
-        if not self.account_id:
-            raise ValueError(
-                "Required environment variable 'TINKOFF_ACCOUNT_ID' not set"
-            )
-
-        self.mode = os.environ.get("TINKOFF_MODE", "sandbox")
-        self.app_name = os.environ.get("TINKOFF_APP_NAME", "tinkoff-invest-mcp")
-
-        # Определяем API target
-        self.target = (
-            INVEST_GRPC_API_SANDBOX if self.mode == "sandbox" else INVEST_GRPC_API
-        )
-
-        # Не создаем клиент здесь, создаем для каждого вызова
-        self.client = None
-
+        # Конфигурация уже загружена и валидирована в __init__
         self.logger.info("📋 Registering MCP tools...")
         self._register_tools()
         self.logger.info("✅ All tools registered successfully")
@@ -91,11 +71,8 @@ class TinkoffMCPService:
 
     def cleanup(self) -> None:
         """Graceful shutdown клиента."""
-        if self.client:
-            self.logger.info("🔌 Closing Tinkoff client connection...")  # type: ignore[unreachable]
-            self.client.close()
-            self.client = None
-            self._initialized = False
+        self.logger.info("🔌 Closing Tinkoff client connection...")
+        self._initialized = False
 
     @contextmanager
     def _client_context(self) -> Generator[Services, None, None]:
@@ -104,15 +81,56 @@ class TinkoffMCPService:
             raise RuntimeError("Service not initialized. Call initialize() first.")
 
         # Создаем новый клиент для каждого вызова
-        if not self.token:
-            raise RuntimeError("Token is not set")
-        client = Client(self.token, target=self.target, app_name=self.app_name)
+        client = Client(
+            self.config.token, target=self.config.target, app_name=self.config.app_name
+        )
         try:
             with client as client_instance:
                 yield client_instance
         finally:
             # Клиент автоматически закроется в with
             pass
+
+    def _get_instrument_info(self, uid: str) -> tuple[str, str]:
+        """Получить имя и тикер инструмента по UID.
+
+        Args:
+            uid: UID инструмента
+
+        Returns:
+            tuple: (name, ticker) или ("Unknown", "UNKNOWN") если не найдено
+        """
+        return self._cache.get_instrument_info(uid)
+
+    def _paginate_instruments(
+        self, instruments: list[Instrument], limit: int, offset: int
+    ) -> PaginatedInstrumentsResponse:
+        """Применить пагинацию к списку инструментов.
+
+        Args:
+            instruments: Список инструментов для пагинации
+            limit: Максимальное количество элементов
+            offset: Смещение для пагинации
+
+        Returns:
+            PaginatedInstrumentsResponse: Пагинированный результат
+        """
+        total = len(instruments)
+        start_idx = offset
+        end_idx = offset + limit
+
+        # Проверяем границы
+        if start_idx >= total:
+            paginated_instruments = []
+        else:
+            paginated_instruments = instruments[start_idx:end_idx]
+
+        return PaginatedInstrumentsResponse.create(
+            instruments=paginated_instruments,
+            total=total,
+            limit=limit,
+            offset=offset,
+        )
 
     def _register_tools(self) -> None:
         """Регистрация всех MCP tools."""
@@ -155,10 +173,18 @@ class TinkoffMCPService:
             PortfolioResponse: Полная информация о портфеле
         """
         with self._client_context() as client:
-            if not self.account_id:
-                raise RuntimeError("Account ID is not set")
-            response = client.operations.get_portfolio(account_id=self.account_id)
-            return PortfolioResponse.from_tinkoff(response)
+            response = client.operations.get_portfolio(
+                account_id=self.config.account_id
+            )
+
+            # Обогащаем позиции данными об инструментах
+            portfolio = PortfolioResponse.from_tinkoff(response)
+            for position in portfolio.positions:
+                name, ticker = self._get_instrument_info(position.instrument_id)
+                position.instrument_name = name
+                position.instrument_ticker = ticker
+
+            return portfolio
 
     def get_cash_balance(self) -> CashBalanceResponse:
         """Получить денежные балансы по валютам.
@@ -173,9 +199,9 @@ class TinkoffMCPService:
             CashBalanceResponse: Балансы по всем валютам
         """
         with self._client_context() as client:
-            if not self.account_id:
-                raise RuntimeError("Account ID is not set")
-            response = client.operations.get_positions(account_id=self.account_id)
+            response = client.operations.get_positions(
+                account_id=self.config.account_id
+            )
             return CashBalanceResponse.from_tinkoff(response)
 
     # Operations methods
@@ -197,26 +223,25 @@ class TinkoffMCPService:
         """
         with self._client_context() as client:
             # Преобразуем строки в datetime если нужно
-            from_dt = (
-                datetime.fromisoformat(from_date.replace("Z", "+00:00"))
-                if isinstance(from_date, str)
-                else from_date
-            )
-            to_dt = (
-                datetime.fromisoformat(to_date.replace("Z", "+00:00"))
-                if isinstance(to_date, str)
-                else to_date
-            )
+            from_dt = DateTimeUtils.parse_iso_datetime(from_date) if from_date else None
+            to_dt = DateTimeUtils.parse_iso_datetime(to_date) if to_date else None
 
-            if not self.account_id:
-                raise RuntimeError("Account ID is not set")
             response = client.operations.get_operations(
-                account_id=self.account_id,
+                account_id=self.config.account_id,
                 figi=instrument_uid or "",
                 from_=from_dt,
                 to=to_dt,
             )
-            return OperationsResponse.from_tinkoff(response)
+
+            # Обогащаем операции данными об инструментах
+            operations = OperationsResponse.from_tinkoff(response)
+            for operation in operations.operations:
+                if operation.instrument_id:
+                    name, ticker = self._get_instrument_info(operation.instrument_id)
+                    operation.instrument_name = name
+                    operation.instrument_ticker = ticker
+
+            return operations
 
     # Market data methods
     def get_last_prices(self, instrument_uids: list[str]) -> LastPricesResponse:
@@ -228,9 +253,29 @@ class TinkoffMCPService:
         Returns:
             LastPricesResponse: Последние цены по запрошенным инструментам
         """
+        from decimal import Decimal
+
+        from .models.common import money_to_decimal
+        from .models.market_data import LastPrice
+
         with self._client_context() as client:
             response = client.market_data.get_last_prices(instrument_id=instrument_uids)
-            return LastPricesResponse.from_tinkoff(response)
+
+            # Обогащаем данные именами из кэша
+            enriched_prices = []
+            for tinkoff_price in response.last_prices:
+                name, ticker = self._get_instrument_info(tinkoff_price.instrument_uid)
+
+                price = LastPrice(
+                    instrument_id=tinkoff_price.instrument_uid,
+                    instrument_name=name,
+                    instrument_ticker=ticker,
+                    price=money_to_decimal(tinkoff_price.price) or Decimal("0"),
+                    time=tinkoff_price.time.isoformat() if tinkoff_price.time else "",
+                )
+                enriched_prices.append(price)
+
+            return LastPricesResponse(prices=enriched_prices)
 
     def get_candles(
         self,
@@ -251,30 +296,12 @@ class TinkoffMCPService:
             CandlesResponse: Исторические данные свечей
         """
         # Преобразуем строковый интервал в enum
-        interval_map = {
-            "1min": CandleInterval.CANDLE_INTERVAL_1_MIN,
-            "5min": CandleInterval.CANDLE_INTERVAL_5_MIN,
-            "15min": CandleInterval.CANDLE_INTERVAL_15_MIN,
-            "hour": CandleInterval.CANDLE_INTERVAL_HOUR,
-            "day": CandleInterval.CANDLE_INTERVAL_DAY,
-        }
-
-        candle_interval = interval_map.get(interval)
-        if not candle_interval:
-            raise ValueError(f"Unsupported interval: {interval}")
+        candle_interval = CandleUtils.get_candle_interval(interval)
 
         with self._client_context() as client:
             # Преобразуем строки в datetime если нужно
-            from_dt = (
-                datetime.fromisoformat(from_date.replace("Z", "+00:00"))
-                if isinstance(from_date, str)
-                else from_date
-            )
-            to_dt = (
-                datetime.fromisoformat(to_date.replace("Z", "+00:00"))
-                if isinstance(to_date, str)
-                else to_date
-            )
+            from_dt = DateTimeUtils.parse_iso_datetime(from_date)
+            to_dt = DateTimeUtils.parse_iso_datetime(to_date)
 
             response = client.market_data.get_candles(
                 figi=instrument_uid,
@@ -282,7 +309,14 @@ class TinkoffMCPService:
                 from_=from_dt,
                 to=to_dt,
             )
-            return CandlesResponse.from_tinkoff(response, instrument_uid, interval)
+
+            # Обогащаем данными об инструменте
+            candles = CandlesResponse.from_tinkoff(response, instrument_uid, interval)
+            name, ticker = self._get_instrument_info(instrument_uid)
+            candles.instrument_name = name
+            candles.instrument_ticker = ticker
+
+            return candles
 
     def get_order_book(self, instrument_uid: str, depth: int = 10) -> OrderBookResponse:
         """Получить стакан заявок по инструменту.
@@ -298,7 +332,14 @@ class TinkoffMCPService:
             response = client.market_data.get_order_book(
                 figi=instrument_uid, depth=depth
             )
-            return OrderBookResponse.from_tinkoff(response)
+
+            # Обогащаем данными об инструменте
+            order_book = OrderBookResponse.from_tinkoff(response)
+            name, ticker = self._get_instrument_info(instrument_uid)
+            order_book.instrument_name = name
+            order_book.instrument_ticker = ticker
+
+            return order_book
 
     def get_trading_status(self, instrument_uid: str) -> TradingStatusResponse:
         """Получить торговый статус инструмента.
@@ -311,7 +352,14 @@ class TinkoffMCPService:
         """
         with self._client_context() as client:
             response = client.market_data.get_trading_status(figi=instrument_uid)
-            return TradingStatusResponse.from_tinkoff(response)
+
+            # Обогащаем данными об инструменте
+            trading_status = TradingStatusResponse.from_tinkoff(response)
+            name, ticker = self._get_instrument_info(instrument_uid)
+            trading_status.instrument_name = name
+            trading_status.instrument_ticker = ticker
+
+            return trading_status
 
     # Orders methods
     def get_orders(self) -> list[Order]:
@@ -321,9 +369,7 @@ class TinkoffMCPService:
             list[Order]: Список активных торговых заявок
         """
         with self._client_context() as client:
-            if not self.account_id:
-                raise RuntimeError("Account ID is not set")
-            response = client.orders.get_orders(account_id=self.account_id)
+            response = client.orders.get_orders(account_id=self.config.account_id)
             return [Order.from_tinkoff(order) for order in response.orders]
 
     def create_order(
@@ -362,9 +408,7 @@ class TinkoffMCPService:
         )
 
         with self._client_context() as client:
-            if not self.account_id:
-                raise RuntimeError("Account ID is not set")
-            tinkoff_request = order_request.to_tinkoff_request(self.account_id)
+            tinkoff_request = order_request.to_tinkoff_request(self.config.account_id)
             response = client.orders.post_order(**tinkoff_request)
             return OrderResponse.from_tinkoff(response)
 
@@ -378,12 +422,10 @@ class TinkoffMCPService:
             dict: Результат отмены заявки
         """
         with self._client_context() as client:
-            if not self.account_id:
-                raise RuntimeError("Account ID is not set")
             response = client.orders.cancel_order(
-                account_id=self.account_id, order_id=order_id
+                account_id=self.config.account_id, order_id=order_id
             )
-            return {"success": True, "time": response.time.isoformat()}
+            return OrderUtils.create_order_response(True, response.time)
 
     # Instruments methods
     def find_instrument(self, query: str) -> list[Instrument]:
@@ -418,7 +460,9 @@ class TinkoffMCPService:
             return Instrument.from_tinkoff(response.instrument)
 
     def get_shares(
-        self, limit: int = 100000, offset: int = 0
+        self,
+        limit: int = DEFAULT_INSTRUMENTS_LIMIT,
+        offset: int = DEFAULT_PAGINATION_OFFSET,
     ) -> PaginatedInstrumentsResponse:
         """Получить список акций с пагинацией.
 
@@ -429,36 +473,13 @@ class TinkoffMCPService:
         Returns:
             PaginatedInstrumentsResponse: Пагинированный список акций
         """
-        # Проверяем кэш
-        if self._shares_cache is None:
-            with self._client_context() as client:
-                response = client.instruments.shares()
-                self._shares_cache = [
-                    Instrument.from_tinkoff_share(share)
-                    for share in response.instruments
-                ]
-                self.logger.info(f"Loaded {len(self._shares_cache)} shares into cache")
-
-        # Применяем пагинацию
-        total = len(self._shares_cache)
-        start_idx = offset
-        end_idx = offset + limit
-
-        # Проверяем границы
-        if start_idx >= total:
-            paginated_shares = []
-        else:
-            paginated_shares = self._shares_cache[start_idx:end_idx]
-
-        return PaginatedInstrumentsResponse.create(
-            instruments=paginated_shares,
-            total=total,
-            limit=limit,
-            offset=offset,
-        )
+        shares = self._cache.get_instruments_by_type("share")
+        return self._paginate_instruments(shares, limit, offset)
 
     def get_bonds(
-        self, limit: int = 100000, offset: int = 0
+        self,
+        limit: int = DEFAULT_INSTRUMENTS_LIMIT,
+        offset: int = DEFAULT_PAGINATION_OFFSET,
     ) -> PaginatedInstrumentsResponse:
         """Получить список облигаций с пагинацией.
 
@@ -469,35 +490,13 @@ class TinkoffMCPService:
         Returns:
             PaginatedInstrumentsResponse: Пагинированный список облигаций
         """
-        # Проверяем кэш
-        if self._bonds_cache is None:
-            with self._client_context() as client:
-                response = client.instruments.bonds()
-                self._bonds_cache = [
-                    Instrument.from_tinkoff_bond(bond) for bond in response.instruments
-                ]
-                self.logger.info(f"Loaded {len(self._bonds_cache)} bonds into cache")
-
-        # Применяем пагинацию
-        total = len(self._bonds_cache)
-        start_idx = offset
-        end_idx = offset + limit
-
-        # Проверяем границы
-        if start_idx >= total:
-            paginated_bonds = []
-        else:
-            paginated_bonds = self._bonds_cache[start_idx:end_idx]
-
-        return PaginatedInstrumentsResponse.create(
-            instruments=paginated_bonds,
-            total=total,
-            limit=limit,
-            offset=offset,
-        )
+        bonds = self._cache.get_instruments_by_type("bond")
+        return self._paginate_instruments(bonds, limit, offset)
 
     def get_etfs(
-        self, limit: int = 100000, offset: int = 0
+        self,
+        limit: int = DEFAULT_INSTRUMENTS_LIMIT,
+        offset: int = DEFAULT_PAGINATION_OFFSET,
     ) -> PaginatedInstrumentsResponse:
         """Получить список ETF с пагинацией.
 
@@ -508,32 +507,8 @@ class TinkoffMCPService:
         Returns:
             PaginatedInstrumentsResponse: Пагинированный список ETF
         """
-        # Проверяем кэш
-        if self._etfs_cache is None:
-            with self._client_context() as client:
-                response = client.instruments.etfs()
-                self._etfs_cache = [
-                    Instrument.from_tinkoff_etf(etf) for etf in response.instruments
-                ]
-                self.logger.info(f"Loaded {len(self._etfs_cache)} ETFs into cache")
-
-        # Применяем пагинацию
-        total = len(self._etfs_cache)
-        start_idx = offset
-        end_idx = offset + limit
-
-        # Проверяем границы
-        if start_idx >= total:
-            paginated_etfs = []
-        else:
-            paginated_etfs = self._etfs_cache[start_idx:end_idx]
-
-        return PaginatedInstrumentsResponse.create(
-            instruments=paginated_etfs,
-            total=total,
-            limit=limit,
-            offset=offset,
-        )
+        etfs = self._cache.get_instruments_by_type("etf")
+        return self._paginate_instruments(etfs, limit, offset)
 
 
 def create_server() -> FastMCP:

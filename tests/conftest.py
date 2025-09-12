@@ -29,9 +29,20 @@ async def mcp_client():
 
 def parse_mcp_result(result):
     """Парсим результат от FastMCP Client."""
-    text_content = result.content[0]  # Первый элемент content
-    json_data = text_content.text
-    return json.loads(json_data)
+    # Если есть structured_content, используем его
+    if hasattr(result, "structured_content") and result.structured_content:
+        if "result" in result.structured_content:
+            return result.structured_content["result"]
+        return result.structured_content
+
+    # Иначе используем text content
+    if result.content and len(result.content) > 0:
+        text_content = result.content[0]  # Первый элемент content
+        json_data = text_content.text
+        return json.loads(json_data)
+
+    # Если нет content, возвращаем пустой список
+    return []
 
 
 @pytest_asyncio.fixture

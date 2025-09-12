@@ -7,9 +7,6 @@ from tinkoff.invest.schemas import (
     GetCandlesResponse as TinkoffGetCandlesResponse,
 )
 from tinkoff.invest.schemas import (
-    GetLastPricesResponse as TinkoffGetLastPricesResponse,
-)
-from tinkoff.invest.schemas import (
     GetOrderBookResponse as TinkoffGetOrderBookResponse,
 )
 from tinkoff.invest.schemas import (
@@ -17,9 +14,6 @@ from tinkoff.invest.schemas import (
 )
 from tinkoff.invest.schemas import (
     HistoricCandle as TinkoffHistoricCandle,
-)
-from tinkoff.invest.schemas import (
-    LastPrice as TinkoffLastPrice,
 )
 from tinkoff.invest.schemas import (
     Order as TinkoffOrder,
@@ -32,48 +26,16 @@ class LastPrice(BaseModel):
     """Последняя цена инструмента."""
 
     instrument_id: str = Field(..., description="UID инструмента")
+    instrument_name: str = Field(..., description="Название инструмента")
+    instrument_ticker: str = Field(..., description="Тикер инструмента")
     price: Decimal = Field(..., description="Последняя цена")
     time: str = Field(..., description="Время обновления в ISO формате")
-
-    @classmethod
-    def from_tinkoff(cls, last_price: TinkoffLastPrice) -> "LastPrice":
-        """Создать из Tinkoff LastPrice.
-
-        Args:
-            last_price: LastPrice от Tinkoff API
-
-        Returns:
-            LastPrice: Конвертированная последняя цена
-        """
-        price = money_to_decimal(last_price.price) or Decimal("0")
-
-        return cls(
-            instrument_id=last_price.instrument_uid,
-            price=price,
-            time=last_price.time.isoformat() if last_price.time else "",
-        )
 
 
 class LastPricesResponse(BaseModel):
     """Ответ с последними ценами."""
 
     prices: list[LastPrice] = Field(default_factory=list, description="Последние цены")
-
-    @classmethod
-    def from_tinkoff(
-        cls, response: TinkoffGetLastPricesResponse
-    ) -> "LastPricesResponse":
-        """Создать из Tinkoff GetLastPricesResponse.
-
-        Args:
-            response: GetLastPricesResponse от Tinkoff API
-
-        Returns:
-            LastPricesResponse: Конвертированные цены
-        """
-        prices = [LastPrice.from_tinkoff(price) for price in response.last_prices]
-
-        return cls(prices=prices)
 
 
 class Candle(BaseModel):
@@ -120,6 +82,8 @@ class CandlesResponse(BaseModel):
         default_factory=list, description="Исторические свечи"
     )
     instrument_id: str = Field(..., description="UID инструмента")
+    instrument_name: str = Field(..., description="Название инструмента")
+    instrument_ticker: str = Field(..., description="Тикер инструмента")
     interval: str = Field(..., description="Интервал свечей")
 
     @classmethod
@@ -138,7 +102,13 @@ class CandlesResponse(BaseModel):
         """
         candles = [Candle.from_tinkoff(candle) for candle in response.candles]
 
-        return cls(candles=candles, instrument_id=instrument_id, interval=interval)
+        return cls(
+            candles=candles,
+            instrument_id=instrument_id,
+            instrument_name="Unknown",
+            instrument_ticker="UNKNOWN",
+            interval=interval,
+        )
 
 
 class OrderBookItem(BaseModel):
@@ -166,6 +136,8 @@ class OrderBookResponse(BaseModel):
     """Ответ со стаканом заявок."""
 
     instrument_id: str = Field(..., description="UID инструмента")
+    instrument_name: str = Field(..., description="Название инструмента")
+    instrument_ticker: str = Field(..., description="Тикер инструмента")
     bids: list[OrderBookItem] = Field(
         default_factory=list, description="Заявки на покупку"
     )
@@ -204,6 +176,8 @@ class OrderBookResponse(BaseModel):
 
         return cls(
             instrument_id=response.instrument_uid,
+            instrument_name="Unknown",
+            instrument_ticker="UNKNOWN",
             bids=bids,
             asks=asks,
             last_price=last_price,
@@ -218,6 +192,8 @@ class TradingStatusResponse(BaseModel):
     """Ответ со статусом торгов."""
 
     instrument_id: str = Field(..., description="UID инструмента")
+    instrument_name: str = Field(..., description="Название инструмента")
+    instrument_ticker: str = Field(..., description="Тикер инструмента")
     trading_status: str = Field(..., description="Статус торгов")
     limit_order_available: bool = Field(..., description="Доступность лимитных заявок")
     market_order_available: bool = Field(..., description="Доступность рыночных заявок")
@@ -236,6 +212,8 @@ class TradingStatusResponse(BaseModel):
         """
         return cls(
             instrument_id=response.instrument_uid,
+            instrument_name="Unknown",
+            instrument_ticker="UNKNOWN",
             trading_status=str(response.trading_status),
             limit_order_available=response.limit_order_available_flag,
             market_order_available=response.market_order_available_flag,

@@ -87,6 +87,8 @@ async def test_get_portfolio(mcp_client):
         position = positions[0]
         expected_fields = [
             "instrument_id",
+            "instrument_name",
+            "instrument_ticker",
             "instrument_type",
             "quantity",
             "average_price",
@@ -102,6 +104,8 @@ async def test_get_portfolio(mcp_client):
 
         # Проверяем типы данных
         assert isinstance(position["instrument_id"], str)
+        assert isinstance(position["instrument_name"], str)
+        assert isinstance(position["instrument_ticker"], str)
         assert isinstance(position["instrument_type"], str)
         assert isinstance(position["currency"], str)
         assert isinstance(position["blocked"], bool)

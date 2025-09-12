@@ -16,6 +16,8 @@ class Operation(BaseModel):
     date: str = Field(..., description="Дата операции в ISO формате")
     type: str = Field(..., description="Тип операции")
     instrument_id: str | None = Field(None, description="UID инструмента")
+    instrument_name: str | None = Field(None, description="Название инструмента")
+    instrument_ticker: str | None = Field(None, description="Тикер инструмента")
     payment: Decimal = Field(..., description="Сумма операции")
     currency: str = Field(..., description="Валюта операции")
     price: Decimal | None = Field(None, description="Цена операции за 1 инструмент")
@@ -63,6 +65,8 @@ class Operation(BaseModel):
             instrument_id=operation.instrument_uid
             if hasattr(operation, "instrument_uid")
             else None,
+            instrument_name=None,
+            instrument_ticker=None,
             payment=payment,
             currency=operation.currency,
             price=price,

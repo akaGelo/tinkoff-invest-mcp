@@ -15,6 +15,8 @@ class PortfolioPosition(BaseModel):
     """Позиция в портфеле."""
 
     instrument_id: str = Field(..., description="UID инструмента")
+    instrument_name: str = Field(..., description="Название инструмента")
+    instrument_ticker: str = Field(..., description="Тикер инструмента")
     instrument_type: str = Field(..., description="Тип инструмента")
     quantity: Decimal = Field(
         ..., description="Количество инструмента в портфеле в штуках"
@@ -53,6 +55,8 @@ class PortfolioPosition(BaseModel):
 
         return cls(
             instrument_id=position.instrument_uid,
+            instrument_name="Unknown",
+            instrument_ticker="UNKNOWN",
             instrument_type=position.instrument_type,
             quantity=quantity,
             average_price=average_price,
