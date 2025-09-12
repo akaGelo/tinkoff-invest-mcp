@@ -38,6 +38,9 @@ class Order(BaseModel):
     executed_commission: Decimal | None = Field(
         None, description="Фактическая комиссия по итогам исполнения заявки"
     )
+    service_commission: Decimal | None = Field(
+        None, description="Сервисная комиссия (биржевой сбор, гербовый сбор и т.д.)"
+    )
     order_request_id: str | None = Field(
         None, description="Идентификатор ключа идемпотентности"
     )
@@ -77,5 +80,22 @@ class Order(BaseModel):
             executed_commission=money_to_decimal(order.executed_commission)
             if hasattr(order, "executed_commission")
             else None,
+            service_commission=money_to_decimal(order.service_commission)
+            if hasattr(order, "service_commission")
+            else None,
             order_request_id=getattr(order, "order_request_id", None),
         )
+
+    @property
+    def total_commission(self) -> Decimal | None:
+        """Общая сумма всех комиссий.
+
+        Returns:
+            Decimal | None: Сумма executed_commission и service_commission или None
+        """
+        if self.executed_commission is None:
+            return None
+        total = self.executed_commission
+        if self.service_commission:
+            total += self.service_commission
+        return total

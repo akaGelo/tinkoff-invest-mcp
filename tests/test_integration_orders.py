@@ -94,3 +94,11 @@ async def test_get_orders_structure(mcp_client):
     orders = parse_mcp_result(orders_result)
 
     assert isinstance(orders, list)
+
+    # Если есть заявки, проверяем структуру комиссий
+    if orders:
+        first_order = orders[0]
+        # Проверяем наличие всех полей комиссий
+        assert "initial_commission" in first_order, "Отсутствует initial_commission"
+        assert "executed_commission" in first_order, "Отсутствует executed_commission"
+        assert "service_commission" in first_order, "Отсутствует service_commission"
