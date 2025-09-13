@@ -23,11 +23,21 @@ class DateTimeUtils:
             return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         return date_str
 
+    @staticmethod
+    def parse_datetime(date_str: str | datetime) -> datetime:
+        """Алиас для parse_iso_datetime для обратной совместимости."""
+        return DateTimeUtils.parse_iso_datetime(date_str)
+
 
 class CandleUtils:
     """Утилиты для работы со свечами."""
 
     INTERVAL_MAP: ClassVar[dict[str, CandleInterval]] = {
+        "CANDLE_INTERVAL_1_MIN": CandleInterval.CANDLE_INTERVAL_1_MIN,
+        "CANDLE_INTERVAL_5_MIN": CandleInterval.CANDLE_INTERVAL_5_MIN,
+        "CANDLE_INTERVAL_15_MIN": CandleInterval.CANDLE_INTERVAL_15_MIN,
+        "CANDLE_INTERVAL_HOUR": CandleInterval.CANDLE_INTERVAL_HOUR,
+        "CANDLE_INTERVAL_DAY": CandleInterval.CANDLE_INTERVAL_DAY,
         "1min": CandleInterval.CANDLE_INTERVAL_1_MIN,
         "5min": CandleInterval.CANDLE_INTERVAL_5_MIN,
         "15min": CandleInterval.CANDLE_INTERVAL_15_MIN,
@@ -52,6 +62,11 @@ class CandleUtils:
         if not candle_interval:
             raise ValueError(f"Unsupported interval: {interval}")
         return candle_interval
+
+    @classmethod
+    def get_tinkoff_interval(cls, interval: str) -> CandleInterval:
+        """Алиас для get_candle_interval для обратной совместимости."""
+        return cls.get_candle_interval(interval)
 
 
 class OrderUtils:
