@@ -1,8 +1,10 @@
 """Base service class for Tinkoff Invest services."""
 
-from collections.abc import Generator
+import inspect
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import datetime
+from typing import Any
 
 import fastmcp.utilities.logging
 from tinkoff.invest import Client
@@ -71,3 +73,30 @@ class BaseTinkoffService:
         if isinstance(date_str, str):
             return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         return date_str
+
+    def get_mcp_tools(self) -> dict[str, Callable[..., Any]]:
+        """Получить публичные методы сервиса для регистрации как MCP tools.
+
+        Возвращает все публичные методы (не начинающиеся с _) кроме служебных.
+
+        Returns:
+            dict: Словарь {имя_метода: метод} для регистрации как MCP tools
+        """
+        tools: dict[str, Callable[..., Any]] = {}
+        excluded_methods = {
+            "set_initialized",
+            "get_mcp_tools",
+            "__init__",
+            "__class__",
+            "__module__",
+            "__dict__",
+            "__weakref__",
+            "__doc__",
+        }
+
+        for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
+            # Включаем только публичные методы (не начинающиеся с _)
+            if not name.startswith("_") and name not in excluded_methods:
+                tools[name] = method
+
+        return tools
