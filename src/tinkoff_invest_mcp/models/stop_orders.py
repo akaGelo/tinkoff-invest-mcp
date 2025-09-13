@@ -117,7 +117,7 @@ class StopOrderRequest(BaseModel):
     stop_price: Decimal = Field(..., description="Цена активации стоп-заявки")
     price: Decimal = Field(
         ...,
-        description="Цена исполнения. 0 для TAKE_PROFIT/STOP_LOSS, >0 для STOP_LIMIT",
+        description="Цена исполнения. 0 для STOP_LOSS, >0 для TAKE_PROFIT и STOP_LIMIT",
     )
     expiration_type: StopOrderExpirationType = Field(
         ...,
@@ -139,11 +139,11 @@ class StopOrderRequest(BaseModel):
         if stop_order_type == StopOrderType.STOP_LIMIT and v <= 0:
             raise ValueError("Price must be positive for STOP_LIMIT orders")
 
-        if (
-            stop_order_type in (StopOrderType.TAKE_PROFIT, StopOrderType.STOP_LOSS)
-            and v != 0
-        ):
-            raise ValueError("Price must be 0 for TAKE_PROFIT and STOP_LOSS orders")
+        if stop_order_type == StopOrderType.TAKE_PROFIT and v <= 0:
+            raise ValueError("Price must be positive for TAKE_PROFIT orders")
+
+        if stop_order_type == StopOrderType.STOP_LOSS and v != 0:
+            raise ValueError("Price must be 0 for STOP_LOSS orders")
 
         if v < 0:
             raise ValueError("Price cannot be negative")
@@ -207,8 +207,12 @@ class StopOrderRequest(BaseModel):
             "stop_price": decimal_to_quotation(self.stop_price),
         }
 
-        # Для stop-limit заявок добавляем цену исполнения
-        if self.stop_order_type == StopOrderType.STOP_LIMIT and self.price:
+        # Для TAKE_PROFIT и STOP_LIMIT заявок добавляем цену исполнения
+        if (
+            self.stop_order_type
+            in (StopOrderType.TAKE_PROFIT, StopOrderType.STOP_LIMIT)
+            and self.price
+        ):
             params["price"] = decimal_to_quotation(self.price)
 
         # Для заявок с датой экспирации добавляем дату

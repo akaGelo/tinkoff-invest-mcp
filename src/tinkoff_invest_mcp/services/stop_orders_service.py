@@ -61,7 +61,7 @@ class StopOrdersService(BaseTinkoffService):
             expiration_type: Тип истечения стоп-заявки:
                 - STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL - до отмены
                 - STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_DATE - до даты
-            price: Цена исполнения (для STOP_LIMIT). Принимает float значение
+            price: Цена исполнения. 0 для STOP_LOSS, >0 для TAKE_PROFIT и STOP_LIMIT
             expire_date: Дата истечения (для GOOD_TILL_DATE). Формат ISO 8601
 
         Returns:
