@@ -55,7 +55,7 @@ async def test_get_all_instrument_types(mcp_client):
 
     assert isinstance(bonds_data["instruments"], list)
     assert bonds_data["total"] > 0
-    assert bonds_data["limit"] == 100000  # default limit
+    assert bonds_data["limit"] == 10  # default limit
     assert bonds_data["offset"] == 0  # default offset
 
     if bonds_data["instruments"]:

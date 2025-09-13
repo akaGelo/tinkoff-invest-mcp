@@ -34,9 +34,9 @@ class StopOrdersService(BaseTinkoffService):
         quantity: int,
         direction: str,
         stop_order_type: str,
-        stop_price: str | float | int,
+        stop_price: float,
         expiration_type: str,
-        price: str | float | int | None = None,
+        price: float | None = None,
         expire_date: str | None = None,
     ) -> StopOrderResponse:
         """Создать стоп-заявку.
@@ -51,11 +51,11 @@ class StopOrdersService(BaseTinkoffService):
                 - STOP_ORDER_TYPE_TAKE_PROFIT - тейк-профит
                 - STOP_ORDER_TYPE_STOP_LOSS - стоп-лосс
                 - STOP_ORDER_TYPE_STOP_LIMIT - стоп-лимит
-            stop_price: Цена активации стоп-заявки. Принимает строку, число или int
+            stop_price: Цена активации стоп-заявки. Принимает float значение
             expiration_type: Тип истечения стоп-заявки:
                 - STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL - до отмены
                 - STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_DATE - до даты
-            price: Цена исполнения (для STOP_LIMIT). Принимает строку, число или int
+            price: Цена исполнения (для STOP_LIMIT). Принимает float значение
             expire_date: Дата истечения (для GOOD_TILL_DATE). Формат ISO 8601
 
         Returns:

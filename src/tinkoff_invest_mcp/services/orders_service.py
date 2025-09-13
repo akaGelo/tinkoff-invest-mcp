@@ -31,7 +31,7 @@ class OrdersService(BaseTinkoffService):
         quantity: int,
         direction: str,
         order_type: str,
-        price: str | float | int | None = None,
+        price: float | None = None,
     ) -> OrderResponse:
         """Создать торговую заявку.
 
@@ -44,7 +44,7 @@ class OrdersService(BaseTinkoffService):
             order_type: Тип заявки:
                 - ORDER_TYPE_MARKET для рыночной заявки
                 - ORDER_TYPE_LIMIT для лимитной заявки
-            price: Цена (только для ORDER_TYPE_LIMIT заявок). Принимает строку "15.475", число 15.475 или int 15
+            price: Цена (только для ORDER_TYPE_LIMIT заявок). Принимает float значение
 
         Returns:
             OrderResponse: Информация о созданной заявке

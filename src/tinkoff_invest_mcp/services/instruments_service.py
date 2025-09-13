@@ -18,8 +18,8 @@ class InstrumentsService(BaseTinkoffService):
     def _paginate_instruments(
         self,
         method_name: str,
-        limit: int | None = None,
-        offset: int | None = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> PaginatedInstrumentsResponse:
         """Универсальный метод для пагинации инструментов.
 
@@ -31,11 +31,6 @@ class InstrumentsService(BaseTinkoffService):
         Returns:
             PaginatedInstrumentsResponse: Список инструментов с информацией о пагинации
         """
-        if limit is None:
-            limit = self.DEFAULT_INSTRUMENTS_LIMIT
-        if offset is None:
-            offset = self.DEFAULT_PAGINATION_OFFSET
-
         with self._client_context() as client:
             # Получаем нужный метод из клиента
             method = getattr(client.instruments, method_name)
@@ -105,8 +100,8 @@ class InstrumentsService(BaseTinkoffService):
 
     def get_shares(
         self,
-        limit: int | None = None,
-        offset: int | None = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> PaginatedInstrumentsResponse:
         """Получить список акций.
 
@@ -117,16 +112,12 @@ class InstrumentsService(BaseTinkoffService):
         Returns:
             PaginatedInstrumentsResponse: Список акций с информацией о пагинации
         """
-        if limit is None:
-            limit = self.DEFAULT_INSTRUMENTS_LIMIT
-        if offset is None:
-            offset = self.DEFAULT_PAGINATION_OFFSET
         return self._paginate_instruments("shares", limit, offset)
 
     def get_bonds(
         self,
-        limit: int | None = None,
-        offset: int | None = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> PaginatedInstrumentsResponse:
         """Получить список облигаций.
 
@@ -137,16 +128,12 @@ class InstrumentsService(BaseTinkoffService):
         Returns:
             PaginatedInstrumentsResponse: Список облигаций с информацией о пагинации
         """
-        if limit is None:
-            limit = self.DEFAULT_INSTRUMENTS_LIMIT
-        if offset is None:
-            offset = self.DEFAULT_PAGINATION_OFFSET
         return self._paginate_instruments("bonds", limit, offset)
 
     def get_etfs(
         self,
-        limit: int | None = None,
-        offset: int | None = None,
+        limit: int = 10,
+        offset: int = 0,
     ) -> PaginatedInstrumentsResponse:
         """Получить список ETF.
 
@@ -157,8 +144,4 @@ class InstrumentsService(BaseTinkoffService):
         Returns:
             PaginatedInstrumentsResponse: Список ETF с информацией о пагинации
         """
-        if limit is None:
-            limit = self.DEFAULT_INSTRUMENTS_LIMIT
-        if offset is None:
-            offset = self.DEFAULT_PAGINATION_OFFSET
         return self._paginate_instruments("etfs", limit, offset)
