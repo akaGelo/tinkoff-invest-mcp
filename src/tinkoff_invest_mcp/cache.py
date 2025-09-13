@@ -14,6 +14,11 @@ if TYPE_CHECKING:
 class InstrumentsCache:
     """Кэш для инструментов с единым хранилищем."""
 
+    # Константы для неизвестных инструментов
+    UNKNOWN_INSTRUMENT_NAME = "Unknown"
+    UNKNOWN_INSTRUMENT_TICKER = "UNKNOWN"
+    CACHE_LOADING_LOG_MESSAGE = "Loading instruments into cache..."
+
     def __init__(
         self, client_factory: Callable[[], AbstractContextManager["Services"]]
     ) -> None:
@@ -33,7 +38,7 @@ class InstrumentsCache:
             return
 
         with self._client_factory() as client:
-            self._logger.info("Loading instruments into cache...")
+            self._logger.info(self.CACHE_LOADING_LOG_MESSAGE)
 
             # Загружаем все типы инструментов
             shares = client.instruments.shares()
@@ -74,7 +79,7 @@ class InstrumentsCache:
 
         # Логируем неудачные поиски для отладки
         self._logger.warning(f"Instrument not found in cache: {uid}")
-        return "Unknown", "UNKNOWN"
+        return self.UNKNOWN_INSTRUMENT_NAME, self.UNKNOWN_INSTRUMENT_TICKER
 
     def get_instruments_by_type(self, instrument_type: str) -> list[Instrument]:
         """Получить список инструментов по типу.

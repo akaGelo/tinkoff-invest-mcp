@@ -10,7 +10,6 @@ from tinkoff.invest.services import Services
 
 from .cache import InstrumentsCache
 from .config import TinkoffConfig
-from .constants import DEFAULT_INSTRUMENTS_LIMIT, DEFAULT_PAGINATION_OFFSET
 from .models import (
     CancelOrderResponse,
     CancelStopOrderResponse,
@@ -430,8 +429,8 @@ class TinkoffMCPService:
 
     def get_shares(
         self,
-        limit: int = DEFAULT_INSTRUMENTS_LIMIT,
-        offset: int = DEFAULT_PAGINATION_OFFSET,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> PaginatedInstrumentsResponse:
         """Получить список акций.
 
@@ -446,8 +445,8 @@ class TinkoffMCPService:
 
     def get_bonds(
         self,
-        limit: int = DEFAULT_INSTRUMENTS_LIMIT,
-        offset: int = DEFAULT_PAGINATION_OFFSET,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> PaginatedInstrumentsResponse:
         """Получить список облигаций.
 
@@ -462,8 +461,8 @@ class TinkoffMCPService:
 
     def get_etfs(
         self,
-        limit: int = DEFAULT_INSTRUMENTS_LIMIT,
-        offset: int = DEFAULT_PAGINATION_OFFSET,
+        limit: int | None = None,
+        offset: int | None = None,
     ) -> PaginatedInstrumentsResponse:
         """Получить список ETF.
 

@@ -3,7 +3,6 @@
 from datetime import datetime
 
 from ..models import OperationsResponse
-from ..utils import DateTimeUtils
 from .base import BaseTinkoffService
 
 
@@ -30,8 +29,8 @@ class OperationsService(BaseTinkoffService):
         Returns:
             OperationsResponse: Список операций за период
         """
-        from_dt = DateTimeUtils.parse_datetime(from_date)
-        to_dt = DateTimeUtils.parse_datetime(to_date) if to_date else datetime.now()
+        from_dt = self._parse_datetime(from_date)
+        to_dt = self._parse_datetime(to_date) if to_date else datetime.now()
 
         with self._client_context() as client:
             response = client.operations.get_operations(

@@ -2,6 +2,9 @@
 
 from datetime import datetime
 from decimal import Decimal
+from typing import ClassVar
+
+from tinkoff.invest.schemas import CandleInterval
 
 from ..models import (
     CandlesResponse,
@@ -12,12 +15,42 @@ from ..models import (
 )
 from ..models.common import money_to_decimal
 from ..models.market_data import LastPrice
-from ..utils import CandleUtils, DateTimeUtils
 from .base import BaseTinkoffService
 
 
 class MarketDataService(BaseTinkoffService):
     """Сервис для работы с рыночными данными."""
+
+    INTERVAL_MAP: ClassVar[dict[str, CandleInterval]] = {
+        "CANDLE_INTERVAL_1_MIN": CandleInterval.CANDLE_INTERVAL_1_MIN,
+        "CANDLE_INTERVAL_5_MIN": CandleInterval.CANDLE_INTERVAL_5_MIN,
+        "CANDLE_INTERVAL_15_MIN": CandleInterval.CANDLE_INTERVAL_15_MIN,
+        "CANDLE_INTERVAL_HOUR": CandleInterval.CANDLE_INTERVAL_HOUR,
+        "CANDLE_INTERVAL_DAY": CandleInterval.CANDLE_INTERVAL_DAY,
+        "1min": CandleInterval.CANDLE_INTERVAL_1_MIN,
+        "5min": CandleInterval.CANDLE_INTERVAL_5_MIN,
+        "15min": CandleInterval.CANDLE_INTERVAL_15_MIN,
+        "hour": CandleInterval.CANDLE_INTERVAL_HOUR,
+        "day": CandleInterval.CANDLE_INTERVAL_DAY,
+    }
+
+    @classmethod
+    def _get_candle_interval(cls, interval: str) -> CandleInterval:
+        """Преобразовать строковый интервал в enum.
+
+        Args:
+            interval: Строковое представление интервала
+
+        Returns:
+            CandleInterval: Enum интервала
+
+        Raises:
+            ValueError: Если интервал не поддерживается
+        """
+        candle_interval = cls.INTERVAL_MAP.get(interval)
+        if not candle_interval:
+            raise ValueError(f"Unsupported interval: {interval}")
+        return candle_interval
 
     def get_last_prices(self, instrument_uids: list[str]) -> LastPricesResponse:
         """Получить последние цены по списку инструментов.
@@ -69,9 +102,9 @@ class MarketDataService(BaseTinkoffService):
         Returns:
             CandlesResponse: Свечи за запрошенный период
         """
-        from_dt = DateTimeUtils.parse_datetime(from_date)
-        to_dt = DateTimeUtils.parse_datetime(to_date) if to_date else datetime.now()
-        tinkoff_interval = CandleUtils.get_tinkoff_interval(interval)
+        from_dt = self._parse_datetime(from_date)
+        to_dt = self._parse_datetime(to_date) if to_date else datetime.now()
+        tinkoff_interval = self._get_candle_interval(interval)
 
         with self._client_context() as client:
             response = client.market_data.get_candles(
@@ -145,10 +178,8 @@ class MarketDataService(BaseTinkoffService):
         Returns:
             TradingSchedulesResponse: Расписание торгов биржи
         """
-        from_dt = (
-            DateTimeUtils.parse_datetime(from_date) if from_date else datetime.now()
-        )
-        to_dt = DateTimeUtils.parse_datetime(to_date) if to_date else from_dt
+        from_dt = self._parse_datetime(from_date) if from_date else datetime.now()
+        to_dt = self._parse_datetime(to_date) if to_date else from_dt
 
         with self._client_context() as client:
             response = client.instruments.trading_schedules(

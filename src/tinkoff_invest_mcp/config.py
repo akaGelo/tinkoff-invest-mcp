@@ -6,14 +6,16 @@ from enum import Enum
 
 from tinkoff.invest.constants import INVEST_GRPC_API, INVEST_GRPC_API_SANDBOX
 
-from .constants import (
-    DEFAULT_APP_NAME,
-    ENV_TINKOFF_ACCOUNT_ID,
-    ENV_TINKOFF_APP_NAME,
-    ENV_TINKOFF_MODE,
-    ENV_TINKOFF_TOKEN,
-    SANDBOX_MODE,
-)
+# Константы конфигурации
+DEFAULT_APP_NAME = "tinkoff-invest-mcp"
+SANDBOX_MODE = "sandbox"
+PRODUCTION_MODE = "production"
+
+# Переменные окружения
+ENV_TINKOFF_TOKEN = "TINKOFF_TOKEN"
+ENV_TINKOFF_ACCOUNT_ID = "TINKOFF_ACCOUNT_ID"
+ENV_TINKOFF_MODE = "TINKOFF_MODE"
+ENV_TINKOFF_APP_NAME = "TINKOFF_APP_NAME"
 
 
 class Mode(Enum):

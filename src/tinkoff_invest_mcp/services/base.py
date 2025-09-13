@@ -2,6 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
+from datetime import datetime
 
 import fastmcp.utilities.logging
 from tinkoff.invest import Client
@@ -56,3 +57,17 @@ class BaseTinkoffService:
             Кортеж из имени и тикера инструмента
         """
         return self._cache.get_instrument_info(uid)
+
+    @staticmethod
+    def _parse_datetime(date_str: str | datetime) -> datetime:
+        """Преобразовать строку ISO в datetime.
+
+        Args:
+            date_str: Строка в формате ISO 8601 или объект datetime
+
+        Returns:
+            datetime: Преобразованная дата
+        """
+        if isinstance(date_str, str):
+            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        return date_str
