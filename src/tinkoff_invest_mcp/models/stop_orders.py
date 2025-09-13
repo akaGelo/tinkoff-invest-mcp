@@ -59,8 +59,8 @@ class StopOrder(BaseModel):
     create_date: datetime | None = Field(None, description="Дата создания")
     activation_date_time: datetime | None = Field(None, description="Дата активации")
     expiration_time: datetime | None = Field(None, description="Дата экспирации")
-    expiration_type: str = Field(
-        ..., description="Тип экспирации: GOOD_TILL_CANCEL/GOOD_TILL_DATE"
+    stop_order_status: str | None = Field(
+        None, description="Статус стоп-заявки: ACTIVE/EXECUTED/CANCELED"
     )
 
     @classmethod
@@ -91,14 +91,14 @@ class StopOrder(BaseModel):
             instrument_uid=stop_order.instrument_uid,
             direction=str(stop_order.direction),
             lots=stop_order.lots_requested,
-            stop_order_type=str(stop_order.stop_order_type),
+            stop_order_type=str(getattr(stop_order, "order_type", "UNKNOWN")),
             price=money_to_decimal(getattr(stop_order, "price", None)),
             stop_price=stop_price_decimal,
             currency=stop_order.stop_price.currency if stop_order.stop_price else None,
             create_date=getattr(stop_order, "create_date", None),
             activation_date_time=getattr(stop_order, "activation_date_time", None),
             expiration_time=getattr(stop_order, "expiration_time", None),
-            expiration_type=str(stop_order.expiration_type),
+            stop_order_status=str(getattr(stop_order, "status", "UNKNOWN")),
         )
 
 

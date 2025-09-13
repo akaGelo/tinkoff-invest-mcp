@@ -1,6 +1,5 @@
 """Orders service for Tinkoff Invest MCP."""
 
-from datetime import datetime, timedelta
 from decimal import Decimal
 
 from tinkoff.invest.schemas import OrderExecutionReportStatus
@@ -17,27 +16,31 @@ from .base import BaseTinkoffService
 class OrdersService(BaseTinkoffService):
     """Сервис для работы с торговыми заявками."""
 
-    def get_active_orders(self, days_back: int = 7) -> list[Order]:
+    def get_active_orders(self) -> list[Order]:
         """Получить список активных торговых заявок.
-
-        Args:
-            days_back: Количество дней назад для поиска заявок (по умолчанию 7)
 
         Returns:
             list[Order]: Список активных заявок
         """
         with self._client_context() as client:
+            # Получаем ВСЕ заявки без фильтрации на стороне API
             response = client.orders.get_orders(
                 account_id=self.config.account_id,
-                from_=datetime.now() - timedelta(days=days_back),
-                to=datetime.now(),
-                execution_status=[
-                    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
-                    OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
-                ],
             )
 
-            return [Order.from_tinkoff(order) for order in response.orders]
+            # Фильтруем локально только активные заявки
+            active_statuses = [
+                OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_NEW,
+                OrderExecutionReportStatus.EXECUTION_REPORT_STATUS_PARTIALLYFILL,
+            ]
+
+            active_orders = [
+                Order.from_tinkoff(order)
+                for order in response.orders
+                if order.execution_report_status in active_statuses
+            ]
+
+            return active_orders
 
     def create_order(
         self,

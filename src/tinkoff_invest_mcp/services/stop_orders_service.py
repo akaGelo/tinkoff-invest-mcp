@@ -24,6 +24,9 @@ class StopOrdersService(BaseTinkoffService):
             StopOrdersResponse: Список активных стоп-заявок
         """
         with self._client_context() as client:
+            # В песочнице метод get_stop_orders не реализован (UNIMPLEMENTED)
+            # Но в продакшене должен работать
+            # Запрашиваем только активные стоп-заявки
             response = client.stop_orders.get_stop_orders(
                 account_id=self.config.account_id,
                 status=StopOrderStatusOption.STOP_ORDER_STATUS_ACTIVE,
