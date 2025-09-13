@@ -29,7 +29,7 @@ class BaseTinkoffService:
         self.logger = fastmcp.utilities.logging.get_logger(self.__class__.__name__)
         self._initialized = False
 
-    def set_initialized(self, value: bool) -> None:
+    def _set_initialized(self, value: bool) -> None:
         """Установить флаг инициализации.
 
         Args:
@@ -77,26 +77,17 @@ class BaseTinkoffService:
     def get_mcp_tools(self) -> dict[str, Callable[..., Any]]:
         """Получить публичные методы сервиса для регистрации как MCP tools.
 
-        Возвращает все публичные методы (не начинающиеся с _) кроме служебных.
+        Возвращает все публичные методы (не начинающиеся с _) кроме самого get_mcp_tools.
 
         Returns:
             dict: Словарь {имя_метода: метод} для регистрации как MCP tools
         """
         tools: dict[str, Callable[..., Any]] = {}
-        excluded_methods = {
-            "set_initialized",
-            "get_mcp_tools",
-            "__init__",
-            "__class__",
-            "__module__",
-            "__dict__",
-            "__weakref__",
-            "__doc__",
-        }
 
         for name, method in inspect.getmembers(self, predicate=inspect.ismethod):
             # Включаем только публичные методы (не начинающиеся с _)
-            if not name.startswith("_") and name not in excluded_methods:
+            # и исключаем сам метод get_mcp_tools
+            if not name.startswith("_") and name != "get_mcp_tools":
                 tools[name] = method
 
         return tools

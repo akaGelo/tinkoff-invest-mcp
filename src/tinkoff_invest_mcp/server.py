@@ -68,7 +68,7 @@ class TinkoffMCPService:
             self.stop_orders_service,
             self.instruments_service,
         ]:
-            service.set_initialized(True)
+            service._set_initialized(True)
 
         # Конфигурация уже загружена и валидирована в __init__
         self.logger.info("📋 Registering MCP tools...")
@@ -92,7 +92,7 @@ class TinkoffMCPService:
             self.stop_orders_service,
             self.instruments_service,
         ]:
-            service.set_initialized(False)
+            service._set_initialized(False)
 
     @contextmanager
     def _client_context(self) -> Generator[Services, None, None]:
