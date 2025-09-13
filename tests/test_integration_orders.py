@@ -19,7 +19,7 @@ from .conftest import parse_mcp_result
 @pytest.mark.asyncio
 async def test_get_orders(mcp_client):
     """Тест получения списка ордеров."""
-    result = await mcp_client.call_tool("get_orders", {})
+    result = await mcp_client.call_tool("get_active_orders", {})
     orders_data = parse_mcp_result(result)
 
     assert isinstance(orders_data, list)
@@ -90,7 +90,7 @@ async def test_create_market_order_error_handling(mcp_client, test_instrument):
 @pytest.mark.asyncio
 async def test_get_orders_structure(mcp_client):
     """Тест структуры ответа для получения ордеров."""
-    orders_result = await mcp_client.call_tool("get_orders", {})
+    orders_result = await mcp_client.call_tool("get_active_orders", {})
     orders = parse_mcp_result(orders_result)
 
     assert isinstance(orders, list)

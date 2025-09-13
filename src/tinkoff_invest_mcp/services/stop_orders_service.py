@@ -3,6 +3,8 @@
 from datetime import datetime
 from decimal import Decimal
 
+from tinkoff.invest.schemas import StopOrderStatusOption
+
 from ..models import (
     CancelStopOrderResponse,
     StopOrderRequest,
@@ -15,7 +17,7 @@ from .base import BaseTinkoffService
 class StopOrdersService(BaseTinkoffService):
     """Сервис для работы со стоп-заявками."""
 
-    def get_stop_orders(self) -> StopOrdersResponse:
+    def get_active_stop_orders(self) -> StopOrdersResponse:
         """Получить список активных стоп-заявок.
 
         Returns:
@@ -23,7 +25,8 @@ class StopOrdersService(BaseTinkoffService):
         """
         with self._client_context() as client:
             response = client.stop_orders.get_stop_orders(
-                account_id=self.config.account_id
+                account_id=self.config.account_id,
+                status=StopOrderStatusOption.STOP_ORDER_STATUS_ACTIVE,
             )
 
             return StopOrdersResponse.from_tinkoff(response)
@@ -36,7 +39,7 @@ class StopOrdersService(BaseTinkoffService):
         stop_order_type: str,
         stop_price: float,
         expiration_type: str,
-        price: float | None = None,
+        price: float,
         expire_date: str | None = None,
     ) -> StopOrderResponse:
         """Создать стоп-заявку.
@@ -66,9 +69,9 @@ class StopOrdersService(BaseTinkoffService):
             quantity=quantity,
             direction=direction,  # type: ignore[arg-type]
             stop_order_type=stop_order_type,  # type: ignore[arg-type]
-            stop_price=Decimal(str(stop_price)),
+            stop_price=Decimal(stop_price),
             expiration_type=expiration_type,  # type: ignore[arg-type]
-            price=Decimal(str(price)) if price is not None else None,
+            price=Decimal(price),
             expire_date=datetime.fromisoformat(expire_date) if expire_date else None,
         )
 

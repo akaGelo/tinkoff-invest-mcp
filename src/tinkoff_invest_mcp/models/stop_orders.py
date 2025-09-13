@@ -115,8 +115,9 @@ class StopOrderRequest(BaseModel):
         description="Тип стоп-заявки: STOP_ORDER_TYPE_TAKE_PROFIT для тейк-профита, STOP_ORDER_TYPE_STOP_LOSS для стоп-лосса, STOP_ORDER_TYPE_STOP_LIMIT для стоп-лимита",
     )
     stop_price: Decimal = Field(..., description="Цена активации стоп-заявки")
-    price: Decimal | None = Field(
-        None, description="Цена исполнения (для STOP_ORDER_TYPE_STOP_LIMIT)"
+    price: Decimal = Field(
+        ...,
+        description="Цена исполнения. 0 для TAKE_PROFIT/STOP_LOSS, >0 для STOP_LIMIT",
     )
     expiration_type: StopOrderExpirationType = Field(
         ...,
@@ -128,18 +129,24 @@ class StopOrderRequest(BaseModel):
 
     @field_validator("price")
     @classmethod
-    def validate_price(cls, v: Decimal | None, info: Any) -> Decimal | None:
+    def validate_price(cls, v: Decimal, info: Any) -> Decimal:
         """Валидация цены в зависимости от типа стоп-заявки."""
         if not info.data:
             return v
 
         stop_order_type = info.data.get("stop_order_type")
 
-        if stop_order_type == StopOrderType.STOP_LIMIT and v is None:
-            raise ValueError("Price is required for STOP_LIMIT orders")
+        if stop_order_type == StopOrderType.STOP_LIMIT and v <= 0:
+            raise ValueError("Price must be positive for STOP_LIMIT orders")
 
-        if v is not None and v <= 0:
-            raise ValueError("Price must be positive")
+        if (
+            stop_order_type in (StopOrderType.TAKE_PROFIT, StopOrderType.STOP_LOSS)
+            and v != 0
+        ):
+            raise ValueError("Price must be 0 for TAKE_PROFIT and STOP_LOSS orders")
+
+        if v < 0:
+            raise ValueError("Price cannot be negative")
 
         return v
 

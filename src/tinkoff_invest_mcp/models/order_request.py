@@ -34,28 +34,30 @@ class CreateOrderRequest(BaseModel):
     quantity: int = Field(..., gt=0, description="Количество лотов для покупки/продажи")
     direction: OrderDirection = Field(..., description="Направление поручения")
     order_type: OrderType = Field(..., description="Тип поручения")
-    price: Decimal | None = Field(None, description="Цена за лот (для LIMIT ордеров)")
+    price: Decimal = Field(
+        ..., description="Цена за лот. 0 для MARKET ордеров, >0 для LIMIT"
+    )
     order_id: str = Field(
         default_factory=lambda: str(uuid4()), description="Уникальный ID поручения"
     )
 
     @field_validator("price")
     @classmethod
-    def validate_price(cls, v: Decimal | None, info: Any) -> Decimal | None:
+    def validate_price(cls, v: Decimal, info: Any) -> Decimal:
         """Валидация цены в зависимости от типа ордера."""
         if not info.data:
             return v
 
         order_type = info.data.get("order_type")
 
-        if order_type == OrderType.LIMIT and v is None:
-            raise ValueError("Price is required for LIMIT orders")
+        if order_type == OrderType.LIMIT and v <= 0:
+            raise ValueError("Price must be positive for LIMIT orders")
 
-        if order_type == OrderType.MARKET and v is not None:
-            raise ValueError("Price should not be set for MARKET orders")
+        if order_type == OrderType.MARKET and v != 0:
+            raise ValueError("Price must be 0 for MARKET orders")
 
-        if v is not None and v <= 0:
-            raise ValueError("Price must be positive")
+        if v < 0:
+            raise ValueError("Price cannot be negative")
 
         return v
 
@@ -94,7 +96,7 @@ class CreateOrderRequest(BaseModel):
         }
 
         # Для лимитных ордеров добавляем цену
-        if self.order_type == OrderType.LIMIT and self.price:
+        if self.order_type == OrderType.LIMIT and self.price > 0:
             params["price"] = decimal_to_quotation(self.price)
 
         return params

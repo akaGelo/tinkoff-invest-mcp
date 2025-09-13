@@ -10,7 +10,7 @@ from .conftest import parse_mcp_result
 async def test_get_stop_orders_structure(mcp_client):
     """Тест структуры ответа получения стоп-заявок."""
     try:
-        result = await mcp_client.call_tool("get_stop_orders", {})
+        result = await mcp_client.call_tool("get_active_stop_orders", {})
 
         stop_orders_data = parse_mcp_result(result)
 
@@ -30,7 +30,7 @@ async def test_get_stop_orders_structure(mcp_client):
 async def test_get_stop_orders_empty_list(mcp_client):
     """Тест получения пустого списка стоп-заявок (если нет активных)."""
     try:
-        result = await mcp_client.call_tool("get_stop_orders", {})
+        result = await mcp_client.call_tool("get_active_stop_orders", {})
 
         stop_orders_data = parse_mcp_result(result)
         stop_orders = stop_orders_data["stop_orders"]
@@ -88,6 +88,9 @@ async def test_post_stop_order_validation_errors(mcp_client):
                 "quantity": 1,
                 "direction": "STOP_ORDER_DIRECTION_SELL",
                 "stop_order_type": "STOP_ORDER_TYPE_STOP_LOSS",
+                "stop_price": 100.0,
+                "price": 0.0,  # Для STOP_LOSS должно быть 0.0
+                "expiration_type": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
                 # Отсутствует instrument_id
             },
         )
@@ -102,6 +105,7 @@ async def test_post_stop_order_validation_errors(mcp_client):
                 "direction": "STOP_ORDER_DIRECTION_SELL",
                 "stop_order_type": "INVALID_STOP_ORDER_TYPE",
                 "stop_price": 100.0,
+                "price": 0.0,
                 "expiration_type": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
             },
         )
@@ -132,6 +136,7 @@ async def test_stop_orders_sandbox_limitations(mcp_client):
                 "direction": "STOP_ORDER_DIRECTION_SELL",
                 "stop_order_type": "STOP_ORDER_TYPE_TAKE_PROFIT",
                 "stop_price": 300.0,
+                "price": 0.0,  # Для TAKE_PROFIT должно быть 0.0
                 "expiration_type": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
             },
         ),
@@ -172,6 +177,7 @@ async def test_stop_order_models_structure(mcp_client):
             "quantity": 1,
             "direction": "STOP_ORDER_DIRECTION_SELL",
             "stop_order_type": "STOP_ORDER_TYPE_STOP_LOSS",
+            "price": 0.0,  # Для STOP_LOSS должно быть 0.0
             "expiration_type": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
             # stop_price отсутствует
         },
@@ -182,6 +188,7 @@ async def test_stop_order_models_structure(mcp_client):
             "direction": "INVALID_DIRECTION",
             "stop_order_type": "STOP_ORDER_TYPE_STOP_LOSS",
             "stop_price": 100.0,
+            "price": 0.0,  # Для STOP_LOSS должно быть 0.0
             "expiration_type": "STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL",
         },
         # Неверный тип экспирации
@@ -191,6 +198,7 @@ async def test_stop_order_models_structure(mcp_client):
             "direction": "STOP_ORDER_DIRECTION_SELL",
             "stop_order_type": "STOP_ORDER_TYPE_STOP_LOSS",
             "stop_price": 100.0,
+            "price": 0.0,  # Для STOP_LOSS должно быть 0.0
             "expiration_type": "INVALID_EXPIRATION_TYPE",
         },
     ]
