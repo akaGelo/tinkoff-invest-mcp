@@ -142,14 +142,14 @@ npx @modelcontextprotocol/inspector
 - `expiration_type` - тип истечения:
   - `STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_CANCEL` - до отмены
   - `STOP_ORDER_EXPIRATION_TYPE_GOOD_TILL_DATE` - до даты
-- `price` - цена исполнения (для STOP_LIMIT, float, опционально)
+- `price` - цена исполнения (0 для STOP_LOSS, >0 для TAKE_PROFIT и STOP_LIMIT, float)
 - `expire_date` - дата истечения (для GOOD_TILL_DATE, опционально)
 
 #### `cancel_stop_order`
 Отменить стоп-заявку.
 - `stop_order_id` - идентификатор стоп-заявки
 
-#### `get_stop_orders`
+#### `get_active_stop_orders`
 Получить список активных стоп-заявок.
 
 ### 🔍 Поиск инструментов
